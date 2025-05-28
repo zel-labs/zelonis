@@ -1,13 +1,13 @@
 package wallet
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 )
 
 func ListAddress(path string) error {
 	keysFile, err := ReadKeysFile(path)
 	if err != nil {
-		return errors.Wrapf(err, "Error reading keys file %s", keysFile)
+		return fmt.Errorf("%s Error reading keys file %s", err, keysFile)
 	}
 
 	return nil
