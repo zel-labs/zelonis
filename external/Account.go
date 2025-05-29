@@ -8,6 +8,8 @@ import (
 
 type Account struct {
 	Balance []byte `json:"balance"`
+	Stake   []byte `json:"stake"`
+	Reward  []byte `json:"reward"`
 }
 
 func (account *Account) SerializedToValidatorAccount(infoBytes []byte) error {

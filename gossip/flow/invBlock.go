@@ -3,7 +3,6 @@ package flow
 import (
 	"errors"
 	"fmt"
-	"log"
 	"reflect"
 	"time"
 	"zelonis/external"
@@ -15,7 +14,7 @@ func (f *flowv1) sendInvBlockHash(dir int) error {
 	for {
 
 		blockHash, err := f.domain.GetHighestBlockHash()
-		log.Printf("%x", blockHash)
+
 		if err != nil {
 
 			return err
@@ -39,9 +38,9 @@ func (f *flowv1) sendInvBlockHash(dir int) error {
 		}
 
 		if reflect.DeepEqual(block.Header.BlockHash, blockHash) {
-			if dir == 1 {
-				f.updateStatus(block)
-			}
+
+			f.updateStatus(block)
+
 			fmt.Println("Already synced")
 			continue
 		}
@@ -54,6 +53,7 @@ func (f *flowv1) updateStatus(block *external.Block) {
 	if !f.Synced {
 		f.SyncedTime = time.Now()
 	}
+
 	f.NodeStatus.IsConnected = true
 	f.NodeStatus.LastUpdated = time.Now()
 	f.NodeStatus.Synced = true

@@ -51,6 +51,7 @@ func (g *gossipLister) handShake(s network.Stream) {
 	if err := z.requestHandShake(); err != nil {
 		z.ErrorHandler(err)
 	}
+
 	flow := flowv1.CreateFollow(z.encoder, z.decoder, z.conn, z.domain, z.validator, z.stake, g.NodeStatus)
 	flow.Start(0)
 	//if valid add p2phandler relay

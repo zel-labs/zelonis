@@ -1,14 +1,17 @@
 package gossip
 
 import (
+	"crypto/ed25519"
 	"encoding/base64"
 	"fmt"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/mr-tron/base58"
 	"github.com/multiformats/go-multiaddr"
 	"log"
+	"math/big"
 	"sync"
 	"time"
 
@@ -40,6 +43,7 @@ type gossipLister struct {
 	domain         *domain.Domain
 	validator      bool
 	stake          float64
+	privateKey     string
 	*external.NodeStatus
 }
 
@@ -66,6 +70,7 @@ func (m *Manager) Start() error {
 	log.Println("Running Gossip Manager")
 	go m.startListner()
 	m.startFlow()
+
 	return nil
 }
 
@@ -91,12 +96,14 @@ func (m *Manager) startListner() {
 	}
 	m.gossipLister = &gossipLister{
 		server:         &host,
+		privateKey:     m.privateKey,
 		activeOutGoing: 0,
 		activeIncoming: 0,
 		minConnection:  8,
 		domain:         m.domain,
 		validator:      m.validator,
 		stake:          m.stake,
+		NodeStatus:     m.NodeStatus,
 	}
 
 	host.SetStreamHandler(protocolID, m.gossipLister.handleStream)
@@ -108,7 +115,7 @@ func (m *Manager) startListner() {
 	}
 	con := &connLogger{}
 	host.Network().Notify(con)
-
+	go m.gossipLister.checkNodeStatus()
 	m.addr = naddr
 
 	select {}
@@ -145,19 +152,107 @@ func Ed25519StringToPrivateKey(b64Key string) (crypto.PrivKey, error) {
 	return priv, nil
 }
 
+func toStdLibEd25519(priv crypto.PrivKey) (ed25519.PrivateKey, error) {
+	raw, err := priv.Raw()
+	if err != nil {
+		return nil, err
+	}
+	return ed25519.PrivateKey(raw), nil
+}
+
 func (m *gossipLister) handleStream(s network.Stream) {
 
 	m.handShake(s)
 
 }
 
+func (m *gossipLister) privKey() ed25519.PrivateKey {
+	privKey, err := Ed25519StringToPrivateKey(m.privateKey)
+	if err != nil {
+		panic(err)
+	}
+	priKey, err := toStdLibEd25519(privKey)
+	if err != nil {
+		panic(err)
+	}
+	return priKey
+}
+
+func (m *gossipLister) getWalletAddress() []byte {
+
+	pubKey := m.privKey().Public().(ed25519.PublicKey)
+	return []byte(base58.Encode(pubKey))
+
+}
+
+var isValidatorOldRunning = false
+var isValidatorRunning = false
+var isValidatorEnabled = false
+var txadded = false
+
 func (m *gossipLister) checkNodeStatus() {
+	//get wallet address from private key
+
+	time.Sleep(10 * time.Second)
+	m.checkIfValidStake()
+	if !isValidatorOldRunning && !isValidatorEnabled {
+		return
+	}
 	for {
-		if m.NodeStatus.Synced && time.Since(m.NodeStatus.SyncedTime).Minutes() >= 10 {
+		m.checkIfValidStake()
+		if m.NodeStatus.Synced && time.Since(m.NodeStatus.SyncedTime).Minutes() >= 10 && m.NodeStatus.LastHeight == 0 && (isValidatorOldRunning || isValidatorEnabled) && !isValidatorRunning {
 			//Start validator for gensis
+			//Check account balance
+			isValidatorRunning = true
+		} else if m.NodeStatus.Synced {
+			if isValidatorOldRunning {
+
+			} else if isValidatorEnabled && !txadded {
+				//Add transaction to mempool
+				wallet := m.getWalletAddress()
+				stakeAmount := []byte(fmt.Sprintf("%v", m.stake))
+				tx := m.domain.TxManager().BuildTxFromType(wallet, wallet, stakeAmount, m.LastBlockHash, external.TxStakingSend)
+				sig := m.domain.TxManager().SignTxAndVerify(tx, m.privKey())
+				tx.Signature = sig
+				m.domain.TxManager().Mempool().AddTxToMempool(tx)
+				txadded = true
+			} else if !isValidatorRunning && isValidatorEnabled {
+				//start validator
+				//m.domain.StartValidatorMode()
+				isValidatorRunning = true
+				//Propose Block
+			}
+			//m.domain.GetAccountBalance()
 
 		}
 		time.Sleep(10 * time.Second)
 	}
 
+}
+
+func (m *gossipLister) checkIfValidStake() {
+	if m.validator {
+		wallet := m.getWalletAddress()
+		account, status := m.domain.GetAccountBalance(wallet)
+		if !status {
+			log.Println("Invalid account balance:", wallet)
+		}
+		if account.Stake != nil {
+			//Check active stake val
+			isValidatorOldRunning = true
+			isValidatorEnabled = true
+			return
+		}
+		balStr := fmt.Sprintf("%s", account.Balance)
+		stakeVal := big.NewFloat(m.stake)
+		bal, _ := new(big.Float).SetString(balStr)
+
+		if bal.Cmp(stakeVal) == 1 {
+
+			isValidatorEnabled = true
+			return
+		}
+
+	}
+	return
 }

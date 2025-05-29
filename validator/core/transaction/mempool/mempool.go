@@ -43,6 +43,7 @@ func (mp *mempool) NewTransactionsPool() *TransactionsPool {
 		allTransactions: &IDToTransactionMap{},
 	}
 }
+
 func (tp *TransactionsPool) AddTxToMempool(tx *external.Transaction) bool {
 
 	tp.mempool.mtx.Lock()

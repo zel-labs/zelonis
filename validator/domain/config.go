@@ -71,6 +71,14 @@ func (d *Domain) checkTXHash(block *external.Block) *external.Block {
 	return block
 }
 
+func (d *Domain) GetAccountBalance(account []byte) (*external.Account, bool) {
+	accountInfo, status := d.accountManager.GetAccount(account)
+	if !status {
+		return nil, false
+	}
+	return accountInfo, true
+}
+
 func (d *Domain) CreateBlockWithTransaction(tx *external.Transaction) (bool, error) {
 	txPool := []*external.Transaction{tx}
 	if err := d.txManager.VerifyTxs(txPool, 0); err != nil {
@@ -85,4 +93,8 @@ func (d *Domain) GetHighestBlockHash() ([]byte, error) {
 
 func (d *Domain) GetBlockByHash(hash []byte) (*external.Block, error) {
 	return d.blockManager.GetBlockByHash(hash)
+}
+
+func (d *Domain) TxManager() *transaction.Manager {
+	return d.txManager
 }
