@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 	ping "zelonis/capn"
+	"zelonis/external"
 	"zelonis/gossip/appMsg"
 	flowv1 "zelonis/gossip/flow"
 	"zelonis/validator/domain"
@@ -21,6 +22,9 @@ type zelPeer struct {
 	decoder   *capnp.Decoder
 	handshake bool
 	domain    *domain.Domain
+	validator bool
+	stake     float64
+	*external.NodeStatus
 }
 
 func (z *zelPeer) Close() {
@@ -33,18 +37,21 @@ func (z *zelPeer) ErrorHandler(err error) {
 }
 func (g *gossipLister) handShake(s network.Stream) {
 	z := &zelPeer{
-		conn:      s.Conn(),
-		encoder:   capnp.NewEncoder(s),
-		decoder:   capnp.NewDecoder(s),
-		handshake: false,
-		domain:    g.domain,
+		conn:       s.Conn(),
+		encoder:    capnp.NewEncoder(s),
+		decoder:    capnp.NewDecoder(s),
+		handshake:  false,
+		domain:     g.domain,
+		validator:  g.validator,
+		stake:      g.stake,
+		NodeStatus: g.NodeStatus,
 	}
 	//start handshake pattern
 
 	if err := z.requestHandShake(); err != nil {
 		z.ErrorHandler(err)
 	}
-	flow := flowv1.CreateFollow(z.encoder, z.decoder, z.conn, z.domain)
+	flow := flowv1.CreateFollow(z.encoder, z.decoder, z.conn, z.domain, z.validator, z.stake, g.NodeStatus)
 	flow.Start(0)
 	//if valid add p2phandler relay
 

@@ -5,6 +5,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"log"
 	ping "zelonis/capn"
+	"zelonis/external"
 	"zelonis/gossip/appMsg"
 	"zelonis/validator/domain"
 )
@@ -16,9 +17,12 @@ type flowv1 struct {
 	encoder    *capnp.Encoder
 	conn       network.Conn
 	domain     *domain.Domain
+	validator  bool
+	stake      float64
+	*external.NodeStatus
 }
 
-func CreateFollow(encoder *capnp.Encoder, decoder *capnp.Decoder, conn network.Conn, domain *domain.Domain) *flowv1 {
+func CreateFollow(encoder *capnp.Encoder, decoder *capnp.Decoder, conn network.Conn, domain *domain.Domain, validator bool, stake float64, nodeStatus *external.NodeStatus) *flowv1 {
 	return &flowv1{
 		isIncoming: false,
 		isOutgoing: false,
@@ -26,12 +30,16 @@ func CreateFollow(encoder *capnp.Encoder, decoder *capnp.Decoder, conn network.C
 		encoder:    encoder,
 		conn:       conn,
 		domain:     domain,
+		validator:  validator,
+		stake:      stake,
+		NodeStatus: nodeStatus,
 	}
 }
 
 func (f *flowv1) Start(dir int) {
 	//create a ping background
 	//Send Inv block
+
 	f.sendInvBlockHash(dir)
 
 }

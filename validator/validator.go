@@ -134,13 +134,11 @@ func (vn *Validator) Start() error {
 	vn.verifyGenesis()
 
 	gossipManager := gossip.NewManager(zeldb.NewDb("gossips", vn.cfg.DataDir), vn.cfg.PrivateKey, vn.domain)
-	gossipManager.UpdateGossipManager(vn.domain, vn.cfg.GossipSeed, vn.cfg.GossipPort)
+	gossipManager.UpdateGossipManager(vn.domain, vn.cfg.GossipSeed, vn.cfg.GossipPort, vn.cfg.Validator, vn.cfg.Stake)
 	go gossipManager.Start()
 
 	vn.http.start()
-	if vn.cfg.Validator {
 
-	}
 	return nil
 }
 

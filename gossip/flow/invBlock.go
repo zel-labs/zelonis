@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"time"
+	"zelonis/external"
 	"zelonis/gossip/appMsg"
 )
 
@@ -37,9 +39,26 @@ func (f *flowv1) sendInvBlockHash(dir int) error {
 		}
 
 		if reflect.DeepEqual(block.Header.BlockHash, blockHash) {
+			if dir == 1 {
+				f.updateStatus(block)
+			}
 			fmt.Println("Already synced")
 			continue
 		}
+		f.Synced = false
 
 	}
+}
+
+func (f *flowv1) updateStatus(block *external.Block) {
+	if !f.Synced {
+		f.SyncedTime = time.Now()
+	}
+	f.NodeStatus.IsConnected = true
+	f.NodeStatus.LastUpdated = time.Now()
+	f.NodeStatus.Synced = true
+	f.NodeStatus.LastBlockHash = block.Header.BlockHash
+	f.NodeStatus.LastBlockTime = time.UnixMilli(block.Header.BlockTime)
+	f.NodeStatus.LastHeight = block.Header.BlockHeight
+
 }

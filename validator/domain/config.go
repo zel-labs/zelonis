@@ -5,9 +5,9 @@ import (
 	"zelonis/external"
 	"zelonis/stats"
 	"zelonis/validator/accounts"
-	"zelonis/validator/block"
 	"zelonis/validator/core"
-	"zelonis/validator/transaction"
+	"zelonis/validator/core/block"
+	"zelonis/validator/core/transaction"
 	"zelonis/zeldb"
 )
 

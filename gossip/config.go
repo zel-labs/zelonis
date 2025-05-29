@@ -10,6 +10,10 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"log"
 	"sync"
+	"time"
+
+	"zelonis/external"
+
 	"zelonis/validator/domain"
 	"zelonis/zeldb"
 )
@@ -24,6 +28,9 @@ type Manager struct {
 	privateKey    string
 	gossipManager gossipFlowManager
 	addr          string
+	validator     bool
+	stake         float64
+	*external.NodeStatus
 }
 type gossipLister struct {
 	server         *host.Host
@@ -31,6 +38,9 @@ type gossipLister struct {
 	activeIncoming int
 	minConnection  int
 	domain         *domain.Domain
+	validator      bool
+	stake          float64
+	*external.NodeStatus
 }
 
 func NewManager(db *zeldb.ZelDB, privateKey string, domain *domain.Domain) *Manager {
@@ -43,10 +53,13 @@ func NewManager(db *zeldb.ZelDB, privateKey string, domain *domain.Domain) *Mana
 	}
 }
 
-func (m *Manager) UpdateGossipManager(domain *domain.Domain, gossipSeed []string, gossipPort int) {
+func (m *Manager) UpdateGossipManager(domain *domain.Domain, gossipSeed []string, gossipPort int, validator bool, stake float64) {
 	m.gossipSeed = gossipSeed
 	m.domain = domain
 	m.gossipPort = gossipPort
+	m.stake = stake
+	m.validator = validator
+	m.NodeStatus = external.NewNodeStatus()
 }
 
 func (m *Manager) Start() error {
@@ -82,6 +95,8 @@ func (m *Manager) startListner() {
 		activeIncoming: 0,
 		minConnection:  8,
 		domain:         m.domain,
+		validator:      m.validator,
+		stake:          m.stake,
 	}
 
 	host.SetStreamHandler(protocolID, m.gossipLister.handleStream)
@@ -133,5 +148,16 @@ func Ed25519StringToPrivateKey(b64Key string) (crypto.PrivKey, error) {
 func (m *gossipLister) handleStream(s network.Stream) {
 
 	m.handShake(s)
+
+}
+
+func (m *gossipLister) checkNodeStatus() {
+	for {
+		if m.NodeStatus.Synced && time.Since(m.NodeStatus.SyncedTime).Minutes() >= 10 {
+			//Start validator for gensis
+
+		}
+		time.Sleep(10 * time.Second)
+	}
 
 }

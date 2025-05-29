@@ -95,7 +95,7 @@ func (g *gossip) startGossip() error {
 		return err
 	}
 
-	flow := flowv1.CreateFollow(g.zelPeer.encoder, g.zelPeer.decoder, g.zelPeer.conn, g.zelPeer.domain)
+	flow := flowv1.CreateFollow(g.zelPeer.encoder, g.zelPeer.decoder, g.zelPeer.conn, g.zelPeer.domain, g.zelPeer.validator, g.zelPeer.stake, g.zelPeer.NodeStatus)
 	flow.Start(1)
 	return nil
 }
@@ -138,11 +138,14 @@ func (m *Manager) createGossip(s seeders) error {
 		encoder := capnp.NewEncoder(stream)
 		decoder := capnp.NewDecoder(stream)
 		z := &zelPeer{
-			conn:      stream.Conn(),
-			encoder:   encoder,
-			decoder:   decoder,
-			handshake: false,
-			domain:    m.domain,
+			conn:       stream.Conn(),
+			encoder:    encoder,
+			decoder:    decoder,
+			handshake:  false,
+			domain:     m.domain,
+			validator:  m.validator,
+			stake:      m.stake,
+			NodeStatus: m.NodeStatus,
 		}
 
 		gossipP2P := &gossip{
