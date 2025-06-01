@@ -2,13 +2,14 @@ package gossip
 
 import (
 	"capnproto.org/go/capnp/v3"
+	"encoding/json"
 	"github.com/libp2p/go-libp2p/core/network"
 	"log"
 	"time"
 	ping "zelonis/capn"
 	"zelonis/external"
-	"zelonis/gossip/appMsg"
 	flowv1 "zelonis/gossip/flow"
+	"zelonis/gossip/flow/appMsg"
 	"zelonis/validator/domain"
 )
 
@@ -88,6 +89,23 @@ func (z *zelPeer) requestHandShake() error {
 		return err
 	}
 
+	return nil
+}
+
+func (z *zelPeer) encodeAndSend(msg interface{}) error {
+	msgByte, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	flowMsg := &appMsg.Flow{
+		Header:  appMsg.SendProposeBlock,
+		Payload: msgByte,
+	}
+	msgByte, err = flowMsg.Encode()
+	if err != nil {
+		return err
+	}
+	z.sendMsg(msgByte)
 	return nil
 }
 

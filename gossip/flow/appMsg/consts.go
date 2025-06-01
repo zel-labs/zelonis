@@ -4,6 +4,7 @@ const (
 	HandshakeMsg = iota
 	//Not done
 	SendInvBlockHash
+	SendProposeBlock
 
 	RequestHighestBlockHash
 	ResponseHighestBlockHash

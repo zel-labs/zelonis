@@ -1,6 +1,8 @@
 package mempool
 
 import (
+	"log"
+	"os"
 	"sync"
 	"zelonis/external"
 )
@@ -18,10 +20,10 @@ type mempool struct {
 
 type TransactionsPool struct {
 	mempool         *mempool
-	allTransactions *IDToTransactionMap
+	allTransactions IDToTransactionMap
 }
 
-type IDToTransactionMap map[*external.DomainTransactionID]*MempoolTransaction
+type IDToTransactionMap map[external.DomainTransactionID]*MempoolTransaction
 
 type MempoolTransaction struct {
 	transaction *external.Transaction
@@ -40,7 +42,7 @@ func NewMempool() *mempool {
 func (mp *mempool) NewTransactionsPool() *TransactionsPool {
 	return &TransactionsPool{
 		mempool:         mp,
-		allTransactions: &IDToTransactionMap{},
+		allTransactions: IDToTransactionMap{},
 	}
 }
 
@@ -53,12 +55,13 @@ func (tp *TransactionsPool) AddTxToMempool(tx *external.Transaction) bool {
 	if err != nil {
 		panic(err)
 	}
-	if (*tp.allTransactions)[hash] == nil {
+	if (tp.allTransactions)[*hash] != nil {
 		return false
 	}
 
 	mtx := newMempoolTransaction(tx)
-	(*tp.allTransactions)[hash] = mtx
+	(tp.allTransactions)[*hash] = mtx
+
 	return true
 }
 
@@ -69,7 +72,13 @@ func (tp *TransactionsPool) RemoveTxFromMempool(tx *external.Transaction) bool {
 	if err != nil {
 		panic(err)
 	}
-	delete(*tp.allTransactions, hash)
+
+	delete(tp.allTransactions, *hash)
+	if len(tp.allTransactions) != 0 {
+		log.Println(len(tp.allTransactions))
+		os.Exit(112)
+	}
+
 	return true
 }
 
@@ -77,4 +86,13 @@ func newMempoolTransaction(transaction *external.Transaction) *MempoolTransactio
 	return &MempoolTransaction{
 		transaction: transaction,
 	}
+}
+
+func (tp *TransactionsPool) GetMempoolTxs() []*external.Transaction {
+	txs := make([]*external.Transaction, 0)
+
+	for _, val := range tp.allTransactions {
+		txs = append(txs, val.transaction)
+	}
+	return txs
 }

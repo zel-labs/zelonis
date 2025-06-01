@@ -115,7 +115,7 @@ func (m *Manager) startListner() {
 	}
 	con := &connLogger{}
 	host.Network().Notify(con)
-	go m.gossipLister.checkNodeStatus()
+	go m.checkNodeStatus()
 	m.addr = naddr
 
 	select {}
@@ -166,7 +166,7 @@ func (m *gossipLister) handleStream(s network.Stream) {
 
 }
 
-func (m *gossipLister) privKey() ed25519.PrivateKey {
+func (m *Manager) privKey() ed25519.PrivateKey {
 	privKey, err := Ed25519StringToPrivateKey(m.privateKey)
 	if err != nil {
 		panic(err)
@@ -178,7 +178,7 @@ func (m *gossipLister) privKey() ed25519.PrivateKey {
 	return priKey
 }
 
-func (m *gossipLister) getWalletAddress() []byte {
+func (m *Manager) getWalletAddress() []byte {
 
 	pubKey := m.privKey().Public().(ed25519.PublicKey)
 	return []byte(base58.Encode(pubKey))
@@ -190,15 +190,17 @@ var isValidatorRunning = false
 var isValidatorEnabled = false
 var txadded = false
 
-func (m *gossipLister) checkNodeStatus() {
+func (m *Manager) checkNodeStatus() {
 	//get wallet address from private key
 
-	time.Sleep(10 * time.Second)
+	time.Sleep(3 * time.Second)
 	m.checkIfValidStake()
 	if !isValidatorOldRunning && !isValidatorEnabled {
 		return
 	}
+
 	for {
+		log.Println("Reached")
 		m.checkIfValidStake()
 		if m.NodeStatus.Synced && time.Since(m.NodeStatus.SyncedTime).Minutes() >= 10 && m.NodeStatus.LastHeight == 0 && (isValidatorOldRunning || isValidatorEnabled) && !isValidatorRunning {
 			//Start validator for gensis
@@ -206,7 +208,7 @@ func (m *gossipLister) checkNodeStatus() {
 			isValidatorRunning = true
 		} else if m.NodeStatus.Synced {
 			if isValidatorOldRunning {
-
+				m.validatorActive()
 			} else if isValidatorEnabled && !txadded {
 				//Add transaction to mempool
 				wallet := m.getWalletAddress()
@@ -215,22 +217,39 @@ func (m *gossipLister) checkNodeStatus() {
 				sig := m.domain.TxManager().SignTxAndVerify(tx, m.privKey())
 				tx.Signature = sig
 				m.domain.TxManager().Mempool().AddTxToMempool(tx)
+
 				txadded = true
 			} else if !isValidatorRunning && isValidatorEnabled {
 				//start validator
-				//m.domain.StartValidatorMode()
+
 				isValidatorRunning = true
+				m.validatorActive()
 				//Propose Block
 			}
 			//m.domain.GetAccountBalance()
 
 		}
-		time.Sleep(10 * time.Second)
+		time.Sleep(3 * time.Second)
 	}
-
 }
 
-func (m *gossipLister) checkIfValidStake() {
+func (m *Manager) validatorActive() {
+	for {
+		//get order of blocks creation
+		time.Sleep(300 * time.Millisecond)
+		proposedBlock := m.domain.StartValidatorMode(m.privKey(), m.getWalletAddress())
+		m.shareProposedBlock(proposedBlock)
+	}
+}
+
+func (m *Manager) shareProposedBlock(block *external.Block) {
+	for key, gossipFlow := range m.gossipManager {
+		log.Println(key, gossipFlow)
+		gossipFlow.zelPeer.encodeAndSend(block)
+	}
+}
+
+func (m *Manager) checkIfValidStake() {
 	if m.validator {
 		wallet := m.getWalletAddress()
 		account, status := m.domain.GetAccountBalance(wallet)

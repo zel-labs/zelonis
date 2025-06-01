@@ -5,7 +5,7 @@ import (
 	"golang.org/x/crypto/blake2b"
 	"zelonis/external"
 	"zelonis/stats"
-	"zelonis/validator/accounts"
+	"zelonis/validator/core/accounts"
 	"zelonis/validator/core/transaction/mempool"
 	"zelonis/zeldb"
 )

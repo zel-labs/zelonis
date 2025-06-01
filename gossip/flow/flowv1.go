@@ -4,9 +4,10 @@ import (
 	"capnproto.org/go/capnp/v3"
 	"github.com/libp2p/go-libp2p/core/network"
 	"log"
+	"reflect"
 	ping "zelonis/capn"
 	"zelonis/external"
-	"zelonis/gossip/appMsg"
+	"zelonis/gossip/flow/appMsg"
 	"zelonis/validator/domain"
 )
 
@@ -44,7 +45,41 @@ func (f *flowv1) Start(dir int) {
 
 }
 
+func (f *flowv1) turnOnReciver() error {
+	flowContoller := appMsg.NewFlowControl(f.conn, f.encoder, f.decoder, f.domain, f.validator, f.stake, f.NodeStatus)
+
+	for {
+		log.Println("Test")
+		appFlow, err := f.receive()
+		if err != nil {
+			return err
+		}
+		status := flowContoller.FilterPayload(appFlow)
+		if status {
+			continue
+		}
+
+		//Locate if block exists
+		blockHash, err := f.domain.GetHighestBlockHash()
+		block, err := f.domain.GetBlockByHash(blockHash)
+		if err != nil {
+			return err
+		}
+
+		if reflect.DeepEqual(block.Header.BlockHash, blockHash) {
+
+			f.updateStatus(block)
+
+			//fmt.Println("Already synced")
+			continue
+		}
+		f.Synced = false
+	}
+
+}
 func (f *flowv1) receive() (*appMsg.Flow, error) {
+	defer f.isIncomingDone()
+	f.isIncoming = true
 	flowMsg := appMsg.NewFlow()
 	msg, err := f.decoder.Decode()
 
@@ -71,6 +106,8 @@ func (f *flowv1) receive() (*appMsg.Flow, error) {
 }
 
 func (f *flowv1) send(flowMsg *appMsg.Flow) error {
+	defer f.isOutgoingDone()
+	f.isOutgoing = true
 	userMsg, err := flowMsg.Encode()
 	if err != nil {
 		return err
@@ -91,5 +128,14 @@ func (f *flowv1) send(flowMsg *appMsg.Flow) error {
 		log.Println(err)
 
 	}
+
 	return nil
+}
+
+func (f *flowv1) isOutgoingDone() {
+	f.isOutgoing = false
+}
+
+func (f *flowv1) isIncomingDone() {
+	f.isOutgoing = false
 }

@@ -98,3 +98,12 @@ func (m *Manager) GetBlockByHash(key []byte) (*external.Block, error) {
 	}
 	return m.getBlockByBlockHeight(blockHeight)
 }
+
+func (m *Manager) GetBlockById(blockHeightStr string) (*external.Block, error) {
+
+	blockHeight, err := strconv.ParseUint(blockHeightStr, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	return m.getBlockByBlockHeight(blockHeight)
+}

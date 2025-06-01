@@ -61,11 +61,27 @@ func (s *httpServer) start() {
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.Send([]byte("Hello, Fiber!"))
 	})
-
+	s.webserver(app)
 	err := app.Listen(":" + strconv.Itoa(s.port))
 	if err != nil {
 		panic(err)
 	}
+}
+
+func (s *httpServer) webserver(app *fiber.App) {
+	//app.Get("/block/:hash", s.getBlock)
+	app.Get("/blockById/:id", s.getBlockById)
+
+}
+
+func (s *httpServer) getBlockById(c *fiber.Ctx) error {
+	blockId := c.Params("id")
+	block, err := s.domain.BlockManager().GetBlockById(blockId)
+	if err != nil {
+		return err
+	}
+	c.JSON(block)
+	return nil
 }
 
 func (s *httpServer) createWallet(c *fiber.Ctx) error {
@@ -74,12 +90,11 @@ func (s *httpServer) createWallet(c *fiber.Ctx) error {
 }
 
 func (s *httpServer) sendTx(c *fiber.Ctx) error {
-	seed := c.FormValue("seed")
+	/*seed := c.FormValue("seed")
 	keys := c.FormValue("keys")
 	reciver := c.FormValue("reciver")
 	val := c.FormValue("val")
-
-	s.domain.CreateBlockWithTransaction(wallet.CreateSignedTransaction(seed, keys, reciver, val))
+	*/
 	return nil
 }
 

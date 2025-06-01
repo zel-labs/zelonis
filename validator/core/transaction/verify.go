@@ -2,7 +2,8 @@ package transaction
 
 import (
 	"crypto/ed25519"
-	"errors"
+	"fmt"
+	"github.com/mr-tron/base58"
 	"log"
 	"reflect"
 	"strings"
@@ -25,11 +26,18 @@ func (m *Manager) VerifyTxs(txs []*external.Transaction, blockHeight uint64) err
 
 		if m.checkIfTxExists(tx) {
 
-			continue
+			//continue
 		}
 		//Add verify signature here...
-		m.verifyTx(tx, blockHeight)
 
+		err := m.verifyTx(tx, blockHeight)
+		if err != nil {
+			return err
+		}
+
+		//Remove tx from mempool
+		m.mempool.RemoveTxFromMempool(tx)
+		//txs[key] = ntx
 	}
 	return nil
 }
@@ -37,7 +45,7 @@ func (m *Manager) VerifyTxs(txs []*external.Transaction, blockHeight uint64) err
 func (m *Manager) verifyTx(tx *external.Transaction, blockHeight uint64) error {
 	if status, _ := m.db.Has(tx.TxHash); status {
 
-		return errors.New("tx already exists")
+		//return nil, errors.New("tx already exists")
 	}
 	m.addTxToAccount(tx, blockHeight)
 	err := m.db.Set(tx.TxHash, tx.TxSerialize())
@@ -48,7 +56,7 @@ func (m *Manager) verifyTx(tx *external.Transaction, blockHeight uint64) error {
 }
 
 func (m *Manager) addTxToAccount(tx *external.Transaction, blockHeight uint64) {
-	log.Println("addTxToAccount tx:", tx.TxHash, "blockHeight:", blockHeight)
+
 	sender := tx.Inpoint.PubKey
 	senderVal, _ := maths.BytesToBigFloatString(tx.Inpoint.Value)
 
@@ -60,6 +68,7 @@ func (m *Manager) addTxToAccount(tx *external.Transaction, blockHeight uint64) {
 	}
 
 	if !m.coreSenderSanity(sender) {
+
 		//check if tranaction already credited to user db
 
 		//Verify Transaction
@@ -69,19 +78,21 @@ func (m *Manager) addTxToAccount(tx *external.Transaction, blockHeight uint64) {
 		}
 		//Get account
 
-		sa, status := m.accountManger.GetAccount(sender)
-		if !status {
+		sa, acstatus := m.accountManger.GetAccount(sender)
+		if !acstatus {
 			tx.Status = external.TXRejectedDueToBalance
 			return
 		}
 
-		if sa.AccountBalanceBigFloat().Cmp(senderVal) <= 0 {
+		if sa.AccountBalanceBigFloat().Cmp(senderVal) >= 0 {
 			//Reduce balance from sender
 			//Add Balance to reciver
 			sa.ReduceBalance(tx.Inpoint.Value, tx.Fee)
 			m.accountManger.UpdateAccount(sa, tx.Inpoint.PubKey)
-			status = m.updateReciverAccount(tx)
-			if status {
+			acstatus = m.updateReciverAccount(tx)
+			if acstatus {
+				tx.Status = external.TxAccepted
+
 				return
 			}
 		}
@@ -135,8 +146,9 @@ func (m *Manager) getTransaction(txByte []byte) *external.Transaction {
 }
 
 func (m *Manager) signatureSanity(tx *external.Transaction) bool {
+	pubKey, _ := base58.Decode(fmt.Sprintf("%s", tx.Inpoint.PubKey))
 
-	pubkey := ed25519.PublicKey(tx.Inpoint.PubKey)
+	pubkey := ed25519.PublicKey(pubKey)
 	if ed25519.Verify(pubkey, tx.TxHash, tx.Signature) {
 
 		log.Printf("Verify Hash %x", tx.TxHash)

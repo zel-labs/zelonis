@@ -13,8 +13,8 @@ import (
 	"log"
 	"net"
 	"time"
-	"zelonis/gossip/appMsg"
 	flowv1 "zelonis/gossip/flow"
+	"zelonis/gossip/flow/appMsg"
 )
 
 type seeders []*seeder
