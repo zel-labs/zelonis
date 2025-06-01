@@ -27,7 +27,7 @@ func (m *Manager) GetAccount(account []byte) (*external.Account, bool) {
 		return nil, false
 	}
 	if !accountStatus {
-		
+
 		return nil, false
 	}
 	//Account exists check balance
