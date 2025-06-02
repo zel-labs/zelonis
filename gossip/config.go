@@ -1,3 +1,21 @@
+/*
+Copyright (C) 2025 Zelonis Contributors
+
+This file is part of Zelonis.
+
+Zelonis is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Zelonis is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Zelonis. If not, see <https://www.gnu.org/licenses/>.
+*/
 package gossip
 
 import (
@@ -80,7 +98,7 @@ const (
 	defaultIpType     = "ip4"
 	defaultListenType = "tcp"
 	defaultKey        = "12D3KooWRpVRrcc2qDM9nv4rcy4Nynb6NW1rWwG7oTVrEX1PUMvb"
-	protocolID        = "/zel/1.0.0"
+	protocolID        = "/zel/0.0.1"
 )
 
 func (m *Manager) startListner() {
@@ -201,7 +219,7 @@ func (m *Manager) checkNodeStatus() {
 	}
 
 	for {
-		log.Println("Reached")
+		log.Println("Trying to start validator node")
 		m.checkIfValidStake()
 		if m.NodeStatus.Synced && time.Since(m.NodeStatus.SyncedTime).Minutes() >= 10 && m.NodeStatus.LastHeight == 0 && (isValidatorOldRunning || isValidatorEnabled) && !isValidatorRunning {
 			//Start validator for gensis
