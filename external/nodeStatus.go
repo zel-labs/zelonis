@@ -3,14 +3,14 @@ package external
 import "time"
 
 type NodeStatus struct {
-	SyncedTime    time.Time
-	Synced        bool
-	LastUpdated   time.Time
-	IsConnected   bool
-	StartTime     time.Time
-	LastBlockTime time.Time
-	LastBlockHash []byte
-	LastHeight    uint64
+	SyncedTime    time.Time `json:"synced_time"`
+	Synced        bool      `json:"synced,omitempty"`
+	LastUpdated   time.Time `json:"last_updated"`
+	IsConnected   bool      `json:"is_connected,omitempty"`
+	StartTime     time.Time `json:"start_time"`
+	LastBlockTime time.Time `json:"last_block_time"`
+	LastBlockHash []byte    `json:"last_block_hash,omitempty"`
+	LastHeight    uint64    `json:"last_height,omitempty"`
 }
 
 func NewNodeStatus() *NodeStatus {

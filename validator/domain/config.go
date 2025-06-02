@@ -49,11 +49,6 @@ func (d *Domain) VerifyInsertBlockAndTransaction(block *external.Block) (bool, e
 	if err != nil {
 		return false, err
 	}
-	if block.Header.BlockHeight != 0 {
-		//log.Println(len(txs))
-		//block.Transactions = txs
-		//os.Exit(112)
-	}
 
 	status, err := d.blockManager.VerifyAndAddBlock(block)
 	if err != nil {
@@ -98,9 +93,15 @@ func (d *Domain) GetBlockByHash(hash []byte) (*external.Block, error) {
 func (d *Domain) BlockManager() *block.Manager {
 	return d.blockManager
 }
+func (d *Domain) AccountManager() *accounts.Manager {
+	return d.accountManager
+}
 
 func (d *Domain) TxManager() *transaction.Manager {
 	return d.txManager
+}
+func (d *Domain) StatsManager() *stats.Manager {
+	return d.statsManager
 }
 
 func (d *Domain) StartValidatorMode(priv ed25519.PrivateKey, wallet []byte) *external.Block {

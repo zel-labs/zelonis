@@ -23,6 +23,9 @@ func (self *ProposeBlock) Encode() ([]byte, error) {
 }
 
 func (self *ProposeBlock) Process(f *flowControl) {
-	f.domain.VerifyInsertBlockAndTransaction(self.Block)
-	log.Println("Block Proposed by node")
+	_, err := f.domain.VerifyInsertBlockAndTransaction(self.Block)
+	if err != nil {
+		log.Fatalf("VerifyInsertBlockAndTransaction err: %s", err)
+	}
+
 }

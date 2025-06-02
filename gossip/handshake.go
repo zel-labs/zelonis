@@ -92,13 +92,13 @@ func (z *zelPeer) requestHandShake() error {
 	return nil
 }
 
-func (z *zelPeer) encodeAndSend(msg interface{}) error {
+func (z *zelPeer) encodeAndSend(msg interface{}, msgType int) error {
 	msgByte, err := json.Marshal(msg)
 	if err != nil {
 		return err
 	}
 	flowMsg := &appMsg.Flow{
-		Header:  appMsg.SendProposeBlock,
+		Header:  msgType,
 		Payload: msgByte,
 	}
 	msgByte, err = flowMsg.Encode()

@@ -59,7 +59,10 @@ func (f *flowControl) FilterPayload(flow *Flow) bool {
 		payload := NewProposeBlock()
 		payload.Decode(flow.Payload)
 		payload.Process(f)
-
+	case SendInviTransaction:
+		payload := NewInviTransaction()
+		payload.Decode(flow.Payload)
+		payload.Process(f)
 	}
 	return true
 }

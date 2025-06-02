@@ -2,6 +2,7 @@ package transaction
 
 import (
 	"crypto/ed25519"
+	"errors"
 	"fmt"
 	"github.com/mr-tron/base58"
 	"log"
@@ -26,9 +27,8 @@ func (m *Manager) VerifyTxs(txs []*external.Transaction, blockHeight uint64) err
 
 		if m.checkIfTxExists(tx) {
 
-			//continue
+			continue
 		}
-		//Add verify signature here...
 
 		err := m.verifyTx(tx, blockHeight)
 		if err != nil {
@@ -37,6 +37,16 @@ func (m *Manager) VerifyTxs(txs []*external.Transaction, blockHeight uint64) err
 
 		//Remove tx from mempool
 		m.mempool.RemoveTxFromMempool(tx)
+		m.statsManager.UpdateTotalTransactions()
+		if tx.Status == external.TxAccepted {
+			if tx.TxType == external.TxStakingSend {
+				m.statsManager.UpdateTotalStake(tx.Inpoint.Value)
+			}
+			if reflect.DeepEqual(tx.Inpoint.PubKey, coreSender) {
+				m.statsManager.UpdateTotalSupply(tx.Inpoint.Value)
+			}
+		}
+
 		//txs[key] = ntx
 	}
 	return nil
@@ -45,10 +55,15 @@ func (m *Manager) VerifyTxs(txs []*external.Transaction, blockHeight uint64) err
 func (m *Manager) verifyTx(tx *external.Transaction, blockHeight uint64) error {
 	if status, _ := m.db.Has(tx.TxHash); status {
 
-		//return nil, errors.New("tx already exists")
+		return errors.New("tx already exists")
 	}
 	m.addTxToAccount(tx, blockHeight)
-	err := m.db.Set(tx.TxHash, tx.TxSerialize())
+	txBlock := []byte(fmt.Sprintf("TxBlock-%x", tx.TxHash))
+	err := m.db.Set(txBlock, []byte(fmt.Sprintf("%v", blockHeight)))
+	if err != nil {
+		return err
+	}
+	err = m.db.Set(tx.TxHash, tx.TxSerialize())
 	if err != nil {
 		return err
 	}
@@ -89,6 +104,7 @@ func (m *Manager) addTxToAccount(tx *external.Transaction, blockHeight uint64) {
 			//Add Balance to reciver
 			sa.ReduceBalance(tx.Inpoint.Value, tx.Fee)
 			m.accountManger.UpdateAccount(sa, tx.Inpoint.PubKey)
+			m.accountManger.AddTxToAccountHistory(tx.Inpoint.PubKey, tx.TxHash)
 			acstatus = m.updateReciverAccount(tx)
 			if acstatus {
 				tx.Status = external.TxAccepted
@@ -102,6 +118,7 @@ func (m *Manager) addTxToAccount(tx *external.Transaction, blockHeight uint64) {
 
 		status = m.updateReciverAccount(tx)
 		if status {
+			tx.Status = external.TxAccepted
 			return
 		}
 
@@ -121,7 +138,7 @@ func (m *Manager) updateReciverAccount(tx *external.Transaction) bool {
 		}
 		ra.AddBalance(tx.Inpoint.Value)
 		m.accountManger.UpdateAccount(ra, Outpoint.PubKey)
-
+		m.accountManger.AddTxToAccountHistory(Outpoint.PubKey, tx.TxHash)
 	}
 
 	return true
@@ -181,4 +198,29 @@ func (m *Manager) txValueSanity(tx *external.Transaction) bool {
 		return false
 	}
 	return true
+}
+
+func (m *Manager) GetTransactionByHash(hash string) (*external.Transaction, error) {
+
+	hashBytes, err := external.NewDomainHashFromString(hash)
+	status, err := m.db.Has(hashBytes.ByteSlice())
+	if err != nil {
+		return nil, err
+	}
+	if !status {
+		return nil, fmt.Errorf("tx not exist")
+	}
+	tx := m.getTransaction(hashBytes.ByteSlice())
+	return tx, nil
+
+}
+
+func (m *Manager) GetTransactionBlockHeight(hash string) (string, error) {
+
+	txBlock := []byte(fmt.Sprintf("TxBlock-%s", hash))
+	heightByte, err := m.db.Get(txBlock)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s", heightByte), nil
 }

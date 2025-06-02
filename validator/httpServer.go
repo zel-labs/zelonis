@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"net"
@@ -10,11 +11,13 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"zelonis/external"
+	"zelonis/gossip"
 	"zelonis/validator/domain"
 	"zelonis/wallet"
 )
 
-type httpServer struct {
+type RpcServer struct {
 	timeouts time.Duration
 	mux      http.ServeMux // registered handlers go here
 
@@ -31,22 +34,23 @@ type httpServer struct {
 	host     string
 	port     int
 
-	handlerNames map[string]string
-	databases    map[*DbTrackers]struct{}
-	domain       *domain.Domain
+	handlerNames  map[string]string
+	databases     map[*DbTrackers]struct{}
+	domain        *domain.Domain
+	gossipManager *gossip.Manager
 }
 
-func (vn *Validator) newHTTPServer(timeouts time.Duration) *httpServer {
-	return &httpServer{
+func NewHTTPServer(timeouts time.Duration, domain *domain.Domain) *RpcServer {
+	return &RpcServer{
 		timeouts:     timeouts,
 		handlerNames: make(map[string]string),
 		port:         DefaultHTTPPort,
 		host:         DefaultHTTPHost,
-		domain:       vn.domain,
+		domain:       domain,
 	}
 }
-func (s *httpServer) start() {
-
+func (s *RpcServer) Start(flowManager *gossip.Manager) {
+	s.gossipManager = flowManager
 	app := fiber.New(fiber.Config{
 		DisableStartupMessage: false,
 	})
@@ -68,37 +72,137 @@ func (s *httpServer) start() {
 	}
 }
 
-func (s *httpServer) webserver(app *fiber.App) {
+func (s *RpcServer) webserver(app *fiber.App) {
 	//app.Get("/block/:hash", s.getBlock)
 	app.Get("/blockById/:id", s.getBlockById)
+	app.Get("/blockByHash/:hash", s.getBlockByHash)
+	app.Get("/tx/:hash", s.getTxByHash)
+	app.Get("/account/:account", s.getAccountBalance)
+	app.Get("/accountTx/:account", s.getAccountTx)
+	app.Get("/accountTxLimit/:account/:from/:limit", s.getAccountTxWithLimit)
+	app.Get("/currentStatus/", s.getCurrentStatus)
 
 }
 
-func (s *httpServer) getBlockById(c *fiber.Ctx) error {
+type nodeInfo struct {
+	LatestBlock        string          `json:"latestBlock"`
+	LastestBlockHeight uint64          `json:"lastestBlockHeight"`
+	TotalTransactions  uint64          `json:"totalTransactions"`
+	TotalStaked        string          `json:"totalStaked"`
+	TotalSupply        string          `json:"totalSupply"`
+	TotalCirculating   string          `json:"totalCirculating"`
+	EpochInfo          *external.Epoch `json:"epoch"`
+}
+
+func (s *RpcServer) getCurrentStatus(c *fiber.Ctx) error {
+	lastBlockHeight, _ := s.domain.StatsManager().GetHighestBlockHeight()
+	lastBlockHash, _ := s.domain.GetHighestBlockHash()
+	totalTx, _ := s.domain.StatsManager().GetTotalTransactions()
+	totalStaked, _ := s.domain.StatsManager().GetTotalStake()
+	totalSupply, _ := s.domain.StatsManager().GetTotalSupply()
+	circulating, _ := s.domain.StatsManager().GetCirculating()
+	epoch := s.domain.StatsManager().GetEpoch()
+	nodeinfo := &nodeInfo{
+		LastestBlockHeight: lastBlockHeight,
+		LatestBlock:        fmt.Sprintf("%x", lastBlockHash),
+		TotalTransactions:  totalTx,
+		TotalStaked:        string(totalStaked),
+		TotalSupply:        string(totalSupply),
+		TotalCirculating:   string(circulating),
+		EpochInfo:          epoch,
+	}
+
+	c.JSON(nodeinfo)
+	return nil
+}
+
+func (s *RpcServer) getBlockByHash(c *fiber.Ctx) error {
+	hash := c.Params("hash")
+	hashBytes, err := external.NewDomainHashFromString(hash)
+	block, err := s.domain.BlockManager().GetBlockByHash(hashBytes.ByteSlice())
+	if err != nil {
+		return err
+	}
+	c.JSON(s.blockToJsonBlock(block))
+	return nil
+}
+
+type jsonBlock struct {
+	Header        *jsonHeader
+	Transactions  []*JsonTx
+	ValidatorInfo *jsonValidator
+	Signature     string
+	RecivedAt     time.Time
+}
+type jsonValidator struct {
+	Addr    string
+	PrevKey string
+}
+type jsonHeader struct {
+	Blockheight uint64
+	Blockhash   string
+	Blocktime   int64
+	ParentSlot  uint64
+	ParentHash  string
+	Version     int8
+}
+
+func (s *RpcServer) getBlockById(c *fiber.Ctx) error {
 	blockId := c.Params("id")
 	block, err := s.domain.BlockManager().GetBlockById(blockId)
 	if err != nil {
 		return err
 	}
-	c.JSON(block)
+	c.JSON(s.blockToJsonBlock(block))
 	return nil
 }
 
-func (s *httpServer) createWallet(c *fiber.Ctx) error {
+func (s *RpcServer) blockToJsonBlock(block *external.Block) *jsonBlock {
+	jsonTxs := make([]*JsonTx, 0)
+	for _, tx := range block.Transactions {
+		jsonTxs = append(jsonTxs, s.externalTxHashToJsonTx(tx))
+	}
+	blockJson := &jsonBlock{
+		Header: &jsonHeader{
+			Blockheight: block.Header.BlockHeight,
+			Blockhash:   fmt.Sprintf("%x", block.Header.BlockHash),
+			Blocktime:   block.Header.BlockTime,
+			ParentSlot:  block.Header.ParentSlot,
+			ParentHash:  fmt.Sprintf("%x", block.Header.BlockHash),
+			Version:     block.Header.Version,
+		},
+		Transactions: jsonTxs,
+		ValidatorInfo: &jsonValidator{
+			Addr:    fmt.Sprintf("%s", block.Validator.Pubkey),
+			PrevKey: fmt.Sprintf("%x", block.Validator.PreviousBlockHash),
+		},
+		Signature: fmt.Sprintf("%x", block.Signature),
+	}
+	return blockJson
+}
+
+func (s *RpcServer) createWallet(c *fiber.Ctx) error {
 
 	return c.JSON(wallet.CreateWallet())
 }
 
-func (s *httpServer) sendTx(c *fiber.Ctx) error {
-	/*seed := c.FormValue("seed")
+func (s *RpcServer) sendTx(c *fiber.Ctx) error {
+	seed := c.FormValue("seed")
 	keys := c.FormValue("keys")
-	reciver := c.FormValue("reciver")
-	val := c.FormValue("val")
-	*/
+	receiver := []byte(c.FormValue("receiver"))
+	val := []byte(c.FormValue("val"))
+	rWallet := (wallet.RecoverWallet(keys, seed))
+	walletAddr := []byte(rWallet.Address)
+	tx := s.domain.TxManager().BuildTxFromType(walletAddr, receiver, val, s.gossipManager.LastBlockHash, external.TxTransfer)
+	//Build Transaction
+	sig := s.domain.TxManager().SignTxAndVerify(tx, rWallet.PrivateKey)
+	tx.Signature = sig
+
+	s.gossipManager.BroadcastTransaction(tx)
 	return nil
 }
 
-func (s *httpServer) recoverWallet(c *fiber.Ctx) error {
+func (s *RpcServer) recoverWallet(c *fiber.Ctx) error {
 	seed := c.Params("seed")
 	encryptKey := c.Params("keys")
 	oSeed, _ := url.QueryUnescape(seed)

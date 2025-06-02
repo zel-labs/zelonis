@@ -5,6 +5,7 @@ const (
 	//Not done
 	SendInvBlockHash
 	SendProposeBlock
+	SendInviTransaction
 
 	RequestHighestBlockHash
 	ResponseHighestBlockHash

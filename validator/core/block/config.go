@@ -105,5 +105,10 @@ func (m *Manager) GetBlockById(blockHeightStr string) (*external.Block, error) {
 	if err != nil {
 		return nil, err
 	}
-	return m.getBlockByBlockHeight(blockHeight)
+	block, err := m.getBlockByBlockHeight(blockHeight)
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
 }

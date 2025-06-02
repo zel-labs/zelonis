@@ -14,6 +14,7 @@ import (
 	"math/big"
 	"sync"
 	"time"
+	"zelonis/gossip/flow/appMsg"
 
 	"zelonis/external"
 
@@ -216,7 +217,9 @@ func (m *Manager) checkNodeStatus() {
 				tx := m.domain.TxManager().BuildTxFromType(wallet, wallet, stakeAmount, m.LastBlockHash, external.TxStakingSend)
 				sig := m.domain.TxManager().SignTxAndVerify(tx, m.privKey())
 				tx.Signature = sig
+				log.Printf("%x", tx.TxHash)
 				m.domain.TxManager().Mempool().AddTxToMempool(tx)
+				//Share tx hash to all the users
 
 				txadded = true
 			} else if !isValidatorRunning && isValidatorEnabled {
@@ -233,19 +236,31 @@ func (m *Manager) checkNodeStatus() {
 	}
 }
 
+func (m *Manager) BroadcastTransaction(tx *external.Transaction) {
+	m.shareTx(tx)
+}
+
+func (m *Manager) shareTx(tx *external.Transaction) {
+	for _, gossipFlow := range m.gossipManager {
+
+		gossipFlow.zelPeer.encodeAndSend(tx, appMsg.SendInviTransaction)
+	}
+}
+
 func (m *Manager) validatorActive() {
 	for {
 		//get order of blocks creation
 		time.Sleep(300 * time.Millisecond)
 		proposedBlock := m.domain.StartValidatorMode(m.privKey(), m.getWalletAddress())
 		m.shareProposedBlock(proposedBlock)
+
 	}
 }
 
 func (m *Manager) shareProposedBlock(block *external.Block) {
 	for key, gossipFlow := range m.gossipManager {
 		log.Println(key, gossipFlow)
-		gossipFlow.zelPeer.encodeAndSend(block)
+		gossipFlow.zelPeer.encodeAndSend(block, appMsg.SendProposeBlock)
 	}
 }
 

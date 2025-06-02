@@ -24,6 +24,10 @@ type seeder struct {
 	addr string
 }
 
+func (m *Manager) FlowManager() *Manager {
+	return m
+}
+
 func (m *Manager) startFlow() {
 
 	//get addr from database if database empty use gossip seed

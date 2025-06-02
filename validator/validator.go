@@ -22,7 +22,7 @@ type Validator struct {
 	cfg *Config
 
 	stop          chan struct{}
-	http          *httpServer
+	rpc           *RpcServer
 	startStopLock sync.Mutex
 	log           logger.Logger
 	dirLock       *flock.Flock
@@ -68,7 +68,7 @@ func New(cfg *Config) (*Validator, error) {
 	if err := vn.openDataDir(); err != nil {
 		return nil, err
 	}
-	vn.http = vn.newHTTPServer(5 * time.Second)
+	vn.rpc = NewHTTPServer(5*time.Second, vn.domain)
 
 	return vn, nil
 }
@@ -137,7 +137,7 @@ func (vn *Validator) Start() error {
 	gossipManager.UpdateGossipManager(vn.domain, vn.cfg.GossipSeed, vn.cfg.GossipPort, vn.cfg.Validator, vn.cfg.Stake)
 	go gossipManager.Start()
 
-	vn.http.start()
+	vn.rpc.Start(gossipManager.FlowManager())
 
 	return nil
 }
