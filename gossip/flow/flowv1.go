@@ -49,7 +49,7 @@ func (f *flowv1) turnOnReciver() error {
 	flowContoller := appMsg.NewFlowControl(f.conn, f.encoder, f.decoder, f.domain, f.validator, f.stake, f.NodeStatus)
 
 	for {
-		log.Println("Test")
+
 		appFlow, err := f.receive()
 		if err != nil {
 			return err
