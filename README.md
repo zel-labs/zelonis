@@ -32,9 +32,13 @@ Zelonis aims to solve the scalability trilemma — decentralization, scalability
 
 ## ✨ Key Features
 ✅ 100,000+ TPS via state sharding and parallelism
+
 ⛓️ Finality in seconds, not minutes
+
 🔐 Slashing for malicious validators and downtime
+
 🌱 Green consensus with no mining required
+
 
 ## 📜 PoToS: Proof of Time over Stake
 PoToS innovates by factoring time into the consensus equation.
