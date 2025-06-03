@@ -45,19 +45,31 @@ PoToS innovates by factoring time into the consensus equation.
 
 ## 🧠 Core Concepts
 Stake Weight: Validators stake ZEL to participate
+
 Time Weight: Validator uptime and continuous participation are rewarded
+
 VDF Ticks: Verifiable Delay Functions used for randomness and fairness
+
 Epoch Rotation: Validators rotate each epoch based on time-weighted randomness
+
 
 ## 🛡️ Benefits
 Prevents stake centralization
+
 Discourages fast churn and "flash" validators
+
 Encourages long-term ecosystem alignment
+
 
 
 🧑‍💻 Community & Support
 Website: https://zelonis.org
+
 Twitter: https://x.com/ZelonisNetwork
+
 Telegram: https://t.me/zelonisofficial
+
 Explorer: https://zelscope.space
+
 Wallet: https://zellet.org
+
