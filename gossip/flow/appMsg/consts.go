@@ -34,8 +34,8 @@ const (
 	RequestBlock
 	ResponseBlock
 
-	RequestBlockHashRelay
-	ResponseBlockHashRelay
+	RequestBlockRelay
+	ResponseBlockRelay
 
 	RequestTransaction
 	ResponseTransaction

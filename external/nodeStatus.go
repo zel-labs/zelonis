@@ -29,6 +29,7 @@ type NodeStatus struct {
 	LastBlockTime time.Time `json:"last_block_time"`
 	LastBlockHash []byte    `json:"last_block_hash,omitempty"`
 	LastHeight    uint64    `json:"last_height,omitempty"`
+	IsIDBRunning  bool      `json:"is_syncing,omitempty"`
 }
 
 func NewNodeStatus() *NodeStatus {

@@ -45,5 +45,14 @@ func (self *ProposeBlock) Process(f *flowControl) {
 	if err != nil {
 		log.Fatalf("VerifyInsertBlockAndTransaction err: %s", err)
 	}
+	appFlow := &Flow{
+		Header:  SendInvBlockHash,
+		Payload: self.Block.Header.BlockHash,
+	}
+	msg, err := appFlow.Encode()
+	if err != nil {
+		panic(err)
+	}
+	f.sendMsg(msg)
 
 }

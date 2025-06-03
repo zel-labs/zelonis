@@ -104,7 +104,7 @@ func (m *Manager) GetBlockByHash(key []byte) (*external.Block, error) {
 		return nil, err
 	}
 	if !status {
-		return nil, fmt.Errorf("block hash not found exists")
+		return nil, external.ErrBlockNotFound
 	}
 	blockHeightByte, err := m.db.Get(key)
 	if err != nil {

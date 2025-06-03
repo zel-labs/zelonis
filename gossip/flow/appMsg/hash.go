@@ -19,7 +19,12 @@ along with Zelonis. If not, see <https://www.gnu.org/licenses/>.
 
 package appMsg
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"errors"
+	"time"
+	"zelonis/external"
+)
 
 type InvBlockHash struct {
 	Hash []byte `json:"hash"`
@@ -30,9 +35,62 @@ func NewInvBlockHash() *InvBlockHash {
 }
 
 func (self *InvBlockHash) Decode(data []byte) error {
-	return json.Unmarshal(data, self)
+	self.Hash = data
+	return nil
 }
 
 func (self *InvBlockHash) Encode() ([]byte, error) {
 	return json.Marshal(self)
+}
+
+func (self *InvBlockHash) Process(f *flowControl) error {
+
+	if f.IsIDBRunning {
+		return nil
+	}
+
+	//Locate if block exists
+	blockHash := self.Hash
+	block, err := f.domain.GetBlockByHash(blockHash)
+	if err != nil && !errors.Is(err, external.ErrBlockNotFound) {
+		panic(err)
+	}
+
+	if block != nil {
+
+		updateStatus(block, f)
+		f.Synced = true
+		//fmt.Println("Already synced")
+		return nil
+	}
+	f.Synced = false
+
+	requestBlockInfo := NewRequestBlockInfo()
+	requestBlockInfo.Hash = blockHash
+	payload, _ := requestBlockInfo.Encode()
+	//Request block
+	appFlow := &Flow{
+		Header:  RequestBlock,
+		Payload: payload,
+	}
+	msg, err := appFlow.Encode()
+	if err != nil {
+		return err
+	}
+	f.sendMsg(msg)
+	return nil
+}
+
+func updateStatus(block *external.Block, f *flowControl) {
+	if !f.Synced {
+		f.SyncedTime = time.Now()
+	}
+
+	f.NodeStatus.IsConnected = true
+	f.NodeStatus.LastUpdated = time.Now()
+	f.NodeStatus.Synced = true
+	f.NodeStatus.LastBlockHash = block.Header.BlockHash
+	f.NodeStatus.LastBlockTime = time.UnixMilli(block.Header.BlockTime)
+	f.NodeStatus.LastHeight = block.Header.BlockHeight
+
 }

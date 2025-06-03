@@ -72,13 +72,25 @@ func (f *flowControl) FilterPayload(flow *Flow) bool {
 	case SendInvBlockHash:
 		payload := NewInvBlockHash()
 		payload.Decode(flow.Payload)
-		return false
+		payload.Process(f)
+	case RequestBlock:
+		payload := NewRequestBlockInfo()
+		payload.Decode(flow.Payload)
+		payload.Process(f)
+	case ResponseBlock:
+		payload := NewResponseBlockInfo()
+		payload.Decode(flow.Payload)
+		payload.Process(f)
 	case SendProposeBlock:
 		payload := NewProposeBlock()
 		payload.Decode(flow.Payload)
 		payload.Process(f)
 	case SendInviTransaction:
 		payload := NewInviTransaction()
+		payload.Decode(flow.Payload)
+		payload.Process(f)
+	case RequestBlockRelay:
+		payload := NewRequestBlockRelayInfo()
 		payload.Decode(flow.Payload)
 		payload.Process(f)
 	}

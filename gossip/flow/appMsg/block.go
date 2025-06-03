@@ -20,6 +20,7 @@ package appMsg
 
 import (
 	"encoding/json"
+	"log"
 	"zelonis/external"
 )
 
@@ -37,4 +38,84 @@ func (self *BlockInfo) Decode(data []byte) error {
 
 func (self *BlockInfo) Encode() ([]byte, error) {
 	return json.Marshal(self)
+}
+
+type RequestBlockInfo struct {
+	Hash []byte `json:"hash"`
+}
+
+func NewRequestBlockInfo() *RequestBlockInfo {
+	return &RequestBlockInfo{}
+}
+
+func (self *RequestBlockInfo) Decode(data []byte) error {
+	return json.Unmarshal(data, self)
+}
+
+func (self *RequestBlockInfo) Encode() ([]byte, error) {
+	return json.Marshal(self)
+}
+
+func (self *RequestBlockInfo) Process(f *flowControl) {
+	block, err := f.domain.GetBlockByHash(self.Hash)
+	if err != nil {
+		return
+	}
+	resBlockInfo := NewResponseBlockInfo()
+	resBlockInfo.Block = *block
+
+	f.encodeAndSend(resBlockInfo, ResponseBlock)
+
+	//ResponseBlockInfo
+}
+
+type ResponseBlockInfo struct {
+	Block external.Block `json:"block"`
+}
+
+func NewResponseBlockInfo() *ResponseBlockInfo {
+	return &ResponseBlockInfo{}
+}
+
+func (self *ResponseBlockInfo) Decode(data []byte) error {
+
+	err := json.Unmarshal(data, self)
+	if err != nil {
+		panic(err)
+	}
+	return json.Unmarshal(data, self)
+}
+
+func (self *ResponseBlockInfo) Encode() ([]byte, error) {
+	return json.Marshal(self)
+}
+
+func (self *ResponseBlockInfo) Process(f *flowControl) {
+	heighestHash, err := f.domain.GetHighestBlockHash()
+	if err != nil {
+		return
+	}
+	cBlock, err := f.domain.GetBlockByHash(heighestHash)
+	if err != nil {
+		return
+	}
+
+	//Compare difference in recived block and current block
+	if self.Block.Header.BlockHeight-cBlock.Header.BlockHeight > 1 {
+		//Turn on IDB Sync
+
+		f.IsIDBRunning = true
+		status, err := self.StartIDB(cBlock, f)
+		if err != nil {
+			panic(err)
+		}
+		if status {
+			log.Println("IDB running")
+
+		}
+	} else {
+		f.domain.VerifyInsertBlockAndTransaction(&self.Block)
+		f.Synced = true
+	}
+
 }

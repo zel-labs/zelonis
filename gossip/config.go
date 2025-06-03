@@ -221,7 +221,8 @@ func (m *Manager) checkNodeStatus() {
 	for {
 		log.Println("Trying to start validator node")
 		m.checkIfValidStake()
-		if m.NodeStatus.Synced && time.Since(m.NodeStatus.SyncedTime).Minutes() >= 10 && m.NodeStatus.LastHeight == 0 && (isValidatorOldRunning || isValidatorEnabled) && !isValidatorRunning {
+
+		if m.NodeStatus.Synced && time.Since(m.NodeStatus.SyncedTime).Seconds() >= 10 && m.NodeStatus.LastHeight == 0 && (isValidatorOldRunning || isValidatorEnabled) && !isValidatorRunning {
 			//Start validator for gensis
 			//Check account balance
 			isValidatorRunning = true
@@ -268,7 +269,7 @@ func (m *Manager) shareTx(tx *external.Transaction) {
 func (m *Manager) validatorActive() {
 	for {
 		//get order of blocks creation
-		time.Sleep(300 * time.Millisecond)
+		time.Sleep(335 * time.Millisecond)
 		proposedBlock := m.domain.StartValidatorMode(m.privKey(), m.getWalletAddress())
 		m.shareProposedBlock(proposedBlock)
 

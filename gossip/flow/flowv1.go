@@ -22,7 +22,6 @@ import (
 	"capnproto.org/go/capnp/v3"
 	"github.com/libp2p/go-libp2p/core/network"
 	"log"
-	"reflect"
 	ping "zelonis/capn"
 	"zelonis/external"
 	"zelonis/gossip/flow/appMsg"
@@ -38,6 +37,7 @@ type flowv1 struct {
 	domain     *domain.Domain
 	validator  bool
 	stake      float64
+	isSyncing  bool
 	*external.NodeStatus
 }
 
@@ -72,26 +72,12 @@ func (f *flowv1) turnOnReciver() error {
 		if err != nil {
 			return err
 		}
+
 		status := flowContoller.FilterPayload(appFlow)
 		if status {
 			continue
 		}
 
-		//Locate if block exists
-		blockHash, err := f.domain.GetHighestBlockHash()
-		block, err := f.domain.GetBlockByHash(blockHash)
-		if err != nil {
-			return err
-		}
-
-		if reflect.DeepEqual(block.Header.BlockHash, blockHash) {
-
-			f.updateStatus(block)
-
-			//fmt.Println("Already synced")
-			continue
-		}
-		f.Synced = false
 	}
 
 }
