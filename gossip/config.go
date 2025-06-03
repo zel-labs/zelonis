@@ -277,10 +277,11 @@ func (m *Manager) validatorActive() {
 }
 
 func (m *Manager) shareProposedBlock(block *external.Block) {
-	for key, gossipFlow := range m.gossipManager {
-		log.Println(key, gossipFlow)
+	for _, gossipFlow := range m.gossipManager {
+
 		gossipFlow.zelPeer.encodeAndSend(block, appMsg.SendProposeBlock)
 	}
+	log.Printf("Propose Block shared %x", block.Header.BlockHash)
 }
 
 func (m *Manager) checkIfValidStake() {

@@ -22,7 +22,6 @@ import (
 	"crypto/ed25519"
 	"encoding/json"
 	"golang.org/x/crypto/blake2b"
-	"log"
 	"time"
 	"zelonis/external"
 	"zelonis/stats"
@@ -60,7 +59,6 @@ func NewDomain(dir string) *Domain {
 
 func (d *Domain) VerifyInsertBlockAndTransaction(block *external.Block) (bool, error) {
 	// Check TxHash and add if missing
-	log.Printf("%x %v", block.Header.BlockHash, block.Header.BlockHeight)
 
 	block = d.checkTXHash(block)
 	err := d.txManager.VerifyTxs(block.Transactions, block.Header.BlockHeight)
