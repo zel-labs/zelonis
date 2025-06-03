@@ -46,8 +46,10 @@ func (self *ResponseBlockInfo) StartIDB(block *external.Block, f *flowControl) (
 		}
 
 		f.encodeAndSend(requestRange, RequestBlockRelay)
+
 		currentBlockHeight = rangeEnd
 		currentP := float64(currentBlockHeight) * 100 / float64(targetBlockHeight)
+
 		log.Printf("Syncing Complete %v %% (Total Blocks till now %v from %v)", currentP, currentBlockHeight, targetBlockHeight)
 		err := f.reciveIDBBlocks()
 		if err != nil {
