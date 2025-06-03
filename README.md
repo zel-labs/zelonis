@@ -62,7 +62,8 @@ Encourages long-term ecosystem alignment
 
 
 
-🧑‍💻 Community & Support
+## 🧑‍💻 Community & Support
+
 Website: https://zelonis.org
 
 Twitter: https://x.com/ZelonisNetwork
