@@ -71,7 +71,7 @@ func NewHTTPServer(timeouts time.Duration, domain *domain.Domain) *RpcServer {
 func (s *RpcServer) Start(flowManager *gossip.Manager) {
 	s.gossipManager = flowManager
 	app := fiber.New(fiber.Config{
-		DisableStartupMessage: false,
+		DisableStartupMessage: true,
 	})
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: "*", // comma-separated
@@ -94,12 +94,47 @@ func (s *RpcServer) Start(flowManager *gossip.Manager) {
 func (s *RpcServer) webserver(app *fiber.App) {
 	//app.Get("/block/:hash", s.getBlock)
 	app.Get("/blockById/:id", s.getBlockById)
+	app.Get("/latestBlocks", s.getLatestBlocks)
+	app.Get("/latestTx/", s.getLatestTx)
 	app.Get("/blockByHash/:hash", s.getBlockByHash)
 	app.Get("/tx/:hash", s.getTxByHash)
 	app.Get("/account/:account", s.getAccountBalance)
 	app.Get("/accountTx/:account", s.getAccountTx)
+	app.Get("/accountTxList/:account", s.getAccountTxList)
 	app.Get("/accountTxLimit/:account/:from/:limit", s.getAccountTxWithLimit)
 	app.Get("/currentStatus/", s.getCurrentStatus)
+
+}
+
+func (s *RpcServer) getLatestTx(c *fiber.Ctx) error {
+	blockHeight, _ := s.domain.StatsManager().GetHighestBlockHeight()
+	txs := make([]*JsonTx, 0)
+txLimit:
+	for blockHeight >= 0 {
+
+		block, _ := s.domain.BlockManager().GetBlockById(strconv.FormatUint(blockHeight, 10))
+		for _, tx := range block.Transactions {
+			jsonTx := s.externalTxHashToJsonTx(tx)
+
+			jsonTx.BlockHeight = strconv.FormatUint(blockHeight, 10)
+
+			jsonTx.Timstamp = block.Header.BlockTime
+
+			txs = append(txs, jsonTx)
+			if len(txs) == 10 {
+				break txLimit
+			}
+		}
+		if blockHeight == 0 {
+			break
+		}
+		blockHeight--
+
+	}
+	JsonTxList := &jsonTxList{
+		TxList: txs,
+	}
+	return c.JSON(JsonTxList)
 
 }
 
@@ -137,6 +172,9 @@ func (s *RpcServer) getCurrentStatus(c *fiber.Ctx) error {
 
 func (s *RpcServer) getBlockByHash(c *fiber.Ctx) error {
 	hash := c.Params("hash")
+	if hash == "" {
+		return c.SendStatus(fiber.StatusBadRequest)
+	}
 	hashBytes, err := external.NewDomainHashFromString(hash)
 	block, err := s.domain.BlockManager().GetBlockByHash(hashBytes.ByteSlice())
 	if err != nil {
@@ -173,6 +211,35 @@ func (s *RpcServer) getBlockById(c *fiber.Ctx) error {
 		return err
 	}
 	c.JSON(s.blockToJsonBlock(block))
+	return nil
+}
+
+type jsonLatestBlocks struct {
+	Blocks []*jsonBlock `json:"blocks"`
+}
+
+func (s *RpcServer) getLatestBlocks(c *fiber.Ctx) error {
+	currentBlockHeight, _ := s.domain.StatsManager().GetHighestBlockHeight()
+	i := uint64(0)
+	blocks := make([]*jsonBlock, 0)
+	for i < 10 {
+
+		ci := currentBlockHeight - i
+		block, err := s.domain.BlockManager().GetBlockById(strconv.FormatUint(ci, 10))
+		if err != nil {
+			return fmt.Errorf("%s : Key val %v", err, ci)
+		}
+		blocks = append(blocks, s.blockToJsonBlock(block))
+		i++
+		if ci == 0 {
+			break
+		}
+	}
+	latestBlocks := &jsonLatestBlocks{
+		Blocks: blocks,
+	}
+
+	c.JSON(latestBlocks)
 	return nil
 }
 

@@ -90,9 +90,6 @@ func (m *Manager) verifyTx(tx *external.Transaction, blockHeight uint64) error {
 
 func (m *Manager) addTxToAccount(tx *external.Transaction, blockHeight uint64) {
 
-	sender := tx.Inpoint.PubKey
-	senderVal, _ := maths.BytesToBigFloatString(tx.Inpoint.Value)
-
 	m.accountManger.AddAccountTransaction(tx.Inpoint.PubKey, tx.TxHash)
 	status := m.txValueSanity(tx)
 	if !status {
@@ -100,6 +97,59 @@ func (m *Manager) addTxToAccount(tx *external.Transaction, blockHeight uint64) {
 		return
 	}
 
+	if tx.TxType == external.TxTransfer || (tx.TxType == 0 && blockHeight == 0) {
+		m.transferTx(tx, blockHeight)
+	} else if tx.TxType == external.TxStakingSend {
+		m.stakingTx(tx, blockHeight)
+	} else if tx.TxType == external.TxStakingRelease {
+		//m.stakingRelease(tx, blockHeight)
+	} else if tx.TxType == external.TxRewardSend {
+		//m.rewardTx(tx, blockHeight)
+	} else if tx.TxType == external.TxRewardRelease {
+		//m.rewardReleaseTx(tx, blockHeight)
+	}
+
+}
+
+func (m *Manager) stakingTx(tx *external.Transaction, blockHeight uint64) {
+	sender := tx.Inpoint.PubKey
+	senderVal, _ := maths.BytesToBigFloatString(tx.Inpoint.Value)
+
+	if !m.coreSenderSanity(sender) {
+
+		if !m.signatureSanity(tx) {
+			tx.Status = external.TxRejctedDueToSignatureMismatch
+			return
+		}
+
+		sa, acstatus := m.accountManger.GetAccount(sender)
+
+		if !acstatus {
+			tx.Status = external.TXRejectedDueToBalance
+			return
+		}
+
+		if sa.AccountBalanceBigFloat().Cmp(senderVal) >= 0 {
+
+			//Reduce balance from sender
+			//Add Balance to reciver
+			_, status := sa.ReduceBalance(tx.Inpoint.Value, tx.Fee)
+
+			if !status {
+				tx.Status = external.TXRejectedDueToBalance
+				return
+			}
+			sa.AddStake(tx.Inpoint.Value)
+			m.accountManger.UpdateAccount(sa, tx.Inpoint.PubKey)
+			m.accountManger.AddTxToAccountHistory(tx.Inpoint.PubKey, tx.TxHash)
+		}
+
+	}
+}
+
+func (m *Manager) transferTx(tx *external.Transaction, blockHeight uint64) {
+	sender := tx.Inpoint.PubKey
+	senderVal, _ := maths.BytesToBigFloatString(tx.Inpoint.Value)
 	if !m.coreSenderSanity(sender) {
 
 		//check if tranaction already credited to user db
@@ -120,7 +170,11 @@ func (m *Manager) addTxToAccount(tx *external.Transaction, blockHeight uint64) {
 		if sa.AccountBalanceBigFloat().Cmp(senderVal) >= 0 {
 			//Reduce balance from sender
 			//Add Balance to reciver
-			sa.ReduceBalance(tx.Inpoint.Value, tx.Fee)
+			_, status := sa.ReduceBalance(tx.Inpoint.Value, tx.Fee)
+			if !status {
+				tx.Status = external.TXRejectedDueToBalance
+				return
+			}
 			m.accountManger.UpdateAccount(sa, tx.Inpoint.PubKey)
 			m.accountManger.AddTxToAccountHistory(tx.Inpoint.PubKey, tx.TxHash)
 			acstatus = m.updateReciverAccount(tx)
@@ -134,14 +188,13 @@ func (m *Manager) addTxToAccount(tx *external.Transaction, blockHeight uint64) {
 	}
 	if m.coreSenderSanity(sender) && blockHeight == 0 {
 
-		status = m.updateReciverAccount(tx)
+		status := m.updateReciverAccount(tx)
 		if status {
 			tx.Status = external.TxAccepted
 			return
 		}
 
 	}
-
 }
 
 func (m *Manager) updateReciverAccount(tx *external.Transaction) bool {
@@ -151,7 +204,15 @@ func (m *Manager) updateReciverAccount(tx *external.Transaction) bool {
 
 		if !status {
 			ra = &external.Account{
-				Balance: []byte("0"),
+				Balance:             []byte("0"),
+				Stake:               []byte("0"),
+				ActivatingStake:     []byte("0"),
+				DeactivatingStake:   []byte("0"),
+				PendingActivation:   []byte("0"),
+				PendingDeactivation: []byte("0"),
+				WarmupStake:         []byte("0"),
+				CoolingDownStake:    []byte("0"),
+				Reward:              []byte("0"),
 			}
 		}
 		ra.AddBalance(tx.Inpoint.Value)

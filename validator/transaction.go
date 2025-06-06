@@ -35,6 +35,7 @@ type JsonTx struct {
 	TxType      int8            `json:"txtype"`
 	BlockHash   string          `json:"blockhash"`
 	BlockHeight string          `json:"blockheight"`
+	Timstamp    int64           `json:"timstamp"`
 }
 
 type JsonInpoint struct {
@@ -67,7 +68,7 @@ func (s *RpcServer) getTxByHash(c *fiber.Ctx) error {
 	}
 	jsonTx.BlockHeight = height
 	jsonTx.BlockHash = fmt.Sprintf("%x", block.Header.BlockHash)
-
+	jsonTx.Timstamp = block.Header.BlockTime
 	c.JSON(jsonTx)
 
 	return nil

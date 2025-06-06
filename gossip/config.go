@@ -30,6 +30,7 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"log"
 	"math/big"
+	"os"
 	"sync"
 	"time"
 	"zelonis/gossip/flow/appMsg"
@@ -98,7 +99,7 @@ const (
 	defaultIpType     = "ip4"
 	defaultListenType = "tcp"
 	defaultKey        = "12D3KooWRpVRrcc2qDM9nv4rcy4Nynb6NW1rWwG7oTVrEX1PUMvb"
-	protocolID        = "/zel/0.0.1"
+	protocolID        = "/zel/0.0.2"
 )
 
 func (m *Manager) startListner() {
@@ -225,6 +226,7 @@ func (m *Manager) checkNodeStatus() {
 		if m.NodeStatus.Synced && time.Since(m.NodeStatus.SyncedTime).Seconds() >= 10 && m.NodeStatus.LastHeight == 0 && (isValidatorOldRunning || isValidatorEnabled) && !isValidatorRunning {
 			//Start validator for gensis
 			//Check account balance
+
 			isValidatorRunning = true
 		} else if m.NodeStatus.Synced {
 			if isValidatorOldRunning {
@@ -250,6 +252,10 @@ func (m *Manager) checkNodeStatus() {
 			}
 			//m.domain.GetAccountBalance()
 
+		} else {
+			log.Println("Validator node is still running")
+			log.Println(m.NodeStatus)
+			os.Exit(223)
 		}
 		time.Sleep(3 * time.Second)
 	}

@@ -26,9 +26,15 @@ import (
 )
 
 type jsonAccountInfo struct {
-	Balance string `json:"balance"`
-	Stake   string `json:"stake"`
-	Reward  string `json:"reward"`
+	Balance             string `json:"balance"`
+	Stake               string `json:"stake"`
+	Reward              string `json:"reward"`
+	ActivatingStake     string `json:"activating_stake"`
+	DeactivatingStake   string `json:"deactivating_stake"`
+	PendingActivation   string `json:"pending_activation"`
+	PendingDeactivation string `json:"pending_deactivation"`
+	WarmupStake         string `json:"warmup_stake"`
+	CoolingDownStake    string `json:"cooling_down_stake"`
 }
 
 func (s *RpcServer) getAccountBalance(c *fiber.Ctx) error {
@@ -39,9 +45,15 @@ func (s *RpcServer) getAccountBalance(c *fiber.Ctx) error {
 	}
 
 	jsonAccount := &jsonAccountInfo{
-		Balance: s.valToJsonVal(accountInfo.Balance),
-		Stake:   s.valToJsonVal(accountInfo.Stake),
-		Reward:  s.valToJsonVal(accountInfo.Reward),
+		Balance:             s.valToJsonVal(accountInfo.Balance),
+		Stake:               s.valToJsonVal(accountInfo.Stake),
+		Reward:              s.valToJsonVal(accountInfo.Reward),
+		ActivatingStake:     s.valToJsonVal(accountInfo.ActivatingStake),
+		DeactivatingStake:   s.valToJsonVal(accountInfo.DeactivatingStake),
+		PendingActivation:   s.valToJsonVal(accountInfo.PendingActivation),
+		PendingDeactivation: s.valToJsonVal(accountInfo.PendingDeactivation),
+		WarmupStake:         s.valToJsonVal(accountInfo.WarmupStake),
+		CoolingDownStake:    s.valToJsonVal(accountInfo.CoolingDownStake),
 	}
 	c.JSON(jsonAccount)
 	return nil
@@ -62,6 +74,41 @@ func (s *RpcServer) getAccountTx(c *fiber.Ctx) error {
 		return err
 	}
 	c.JSON(list)
+	return nil
+}
+
+type jsonTxList struct {
+	TxList []*JsonTx `json:"tx_list"`
+}
+
+func (s *RpcServer) getAccountTxList(c *fiber.Ctx) error {
+	account := c.Params("account")
+
+	list, err := s.domain.AccountManager().GetTxHistoryList([]byte(account), 0, 10)
+	if err != nil {
+		return err
+	}
+	txs := []*JsonTx{}
+	for _, txHash := range list {
+		tx, err := s.domain.TxManager().GetTransactionByHash(txHash)
+		if err != nil {
+			return err
+		}
+		jsonTx := s.externalTxHashToJsonTx(tx)
+		height, err := s.domain.TxManager().GetTransactionBlockHeight(txHash)
+		if err != nil {
+			return err
+		}
+		block, err := s.domain.BlockManager().GetBlockById(height)
+		if err != nil {
+			return err
+		}
+
+		jsonTx.Timstamp = block.Header.BlockTime
+		txs = append(txs, jsonTx)
+	}
+	JsonTxList := &jsonTxList{TxList: txs}
+	c.JSON(JsonTxList)
 	return nil
 }
 
