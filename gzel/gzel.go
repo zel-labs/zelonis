@@ -91,6 +91,10 @@ func defaultNodeConfig(ctx *cli.Context) validator.Config {
 			panic("Minimum stake amount is 100")
 		}
 	}
+	reverify := ctx.Bool("utxo-reverify")
+	if reverify {
+		cfg.ReVerify = true
+	}
 	cfg.PrivateKey = base64.StdEncoding.EncodeToString(encoded)
 	cfg.Name = clientIdentifier
 	cfg.Version = params.VersionWithCommit(git.Commit, git.Date)
@@ -116,6 +120,11 @@ func init() {
 			Usage:    "Amount of stake in validator",
 			Required: false,
 			Value:    100,
+		},
+		&cli.BoolFlag{
+			Name:  "utxo-reverify",
+			Usage: "Use utxo reverse validator",
+			Value: false,
 		},
 	}
 

@@ -32,6 +32,7 @@ import (
 	"time"
 	"zelonis/external"
 	"zelonis/gossip"
+	"zelonis/utils/maths"
 	"zelonis/validator/domain"
 	"zelonis/wallet"
 )
@@ -80,7 +81,7 @@ func (s *RpcServer) Start(flowManager *gossip.Manager) {
 	}))
 	app.Get("/createWallet", s.createWallet)
 	app.Get("/recoverWallet/:seed/keys/:keys", s.recoverWallet)
-	app.Get("/sendTx/", s.sendTx)
+	app.Post("/sendTx/", s.sendTx)
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.Send([]byte("Hello, Fiber!"))
 	})
@@ -176,6 +177,9 @@ func (s *RpcServer) getBlockByHash(c *fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusBadRequest)
 	}
 	hashBytes, err := external.NewDomainHashFromString(hash)
+	if err != nil {
+		return c.SendStatus(fiber.StatusBadRequest)
+	}
 	block, err := s.domain.BlockManager().GetBlockByHash(hashBytes.ByteSlice())
 	if err != nil {
 		return err
@@ -254,7 +258,7 @@ func (s *RpcServer) blockToJsonBlock(block *external.Block) *jsonBlock {
 			Blockhash:   fmt.Sprintf("%x", block.Header.BlockHash),
 			Blocktime:   block.Header.BlockTime,
 			ParentSlot:  block.Header.ParentSlot,
-			ParentHash:  fmt.Sprintf("%x", block.Header.BlockHash),
+			ParentHash:  fmt.Sprintf("%x", block.Header.ParentHash),
 			Version:     block.Header.Version,
 		},
 		Transactions: jsonTxs,
@@ -275,16 +279,29 @@ func (s *RpcServer) createWallet(c *fiber.Ctx) error {
 func (s *RpcServer) sendTx(c *fiber.Ctx) error {
 	seed := c.FormValue("seed")
 	keys := c.FormValue("keys")
-	receiver := []byte(c.FormValue("receiver"))
-	val := []byte(c.FormValue("val"))
+	receiverVal := c.FormValue("receiver")
+	if len(receiverVal) < 43 || len(receiverVal) > 44 {
+		return c.SendStatus(fiber.StatusBadRequest)
+	}
+
+	receiver := []byte(receiverVal)
+	valStr := c.FormValue("val")
+	val := []byte(valStr)
 	rWallet := (wallet.RecoverWallet(keys, seed))
+
+	if !maths.IsValidNumber(valStr) {
+		return c.SendStatus(fiber.StatusBadRequest)
+	}
 	walletAddr := []byte(rWallet.Address)
-	tx := s.domain.TxManager().BuildTxFromType(walletAddr, receiver, val, s.gossipManager.LastBlockHash, external.TxTransfer)
+	hash, _ := s.domain.GetHighestBlockHash()
+
+	tx := s.domain.TxManager().BuildTxFromType(walletAddr, receiver, val, hash, external.TxTransfer)
 	//Build Transaction
 	sig := s.domain.TxManager().SignTxAndVerify(tx, rWallet.PrivateKey)
 	tx.Signature = sig
 
 	s.gossipManager.BroadcastTransaction(tx)
+	c.JSON(fmt.Sprintf("%x", tx.TxHash))
 	return nil
 }
 

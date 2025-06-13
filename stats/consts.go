@@ -22,6 +22,7 @@ const (
 	heightestBlockHeightKey = "block_height"
 	totalAccountsKey        = "accounts_total"
 	totalTransactionsKey    = "transactions_total"
+	utxoBlockHeight         = "utxo_block_height"
 	totalSupply             = "supply_total"
 	totalStaked             = "staked_total"
 	totalValidatorsKey      = "validators_total"

@@ -63,7 +63,7 @@ func (s *RpcServer) valToJsonVal(val []byte) string {
 	valStr := fmt.Sprintf("%s", val)
 	//bigVal, _ := big.NewFloat(0).SetString(valStr)
 	valFloat, _ := strconv.ParseFloat(valStr, 64)
-	return fmt.Sprintf("%.7f", valFloat)
+	return fmt.Sprintf("%.9f", valFloat)
 }
 
 func (s *RpcServer) getAccountTx(c *fiber.Ctx) error {

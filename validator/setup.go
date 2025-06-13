@@ -57,6 +57,7 @@ type Config struct {
 	GossipPort int
 	Validator  bool
 	Stake      float64
+	ReVerify   bool
 }
 
 const (

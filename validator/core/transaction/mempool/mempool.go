@@ -21,7 +21,6 @@ package mempool
 
 import (
 	"log"
-	"os"
 	"sync"
 	"zelonis/external"
 )
@@ -74,6 +73,7 @@ func (tp *TransactionsPool) AddTxToMempool(tx *external.Transaction) bool {
 	if err != nil {
 		panic(err)
 	}
+
 	if (tp.allTransactions)[*hash] != nil {
 		return false
 	}
@@ -95,7 +95,7 @@ func (tp *TransactionsPool) RemoveTxFromMempool(tx *external.Transaction) bool {
 	delete(tp.allTransactions, *hash)
 	if len(tp.allTransactions) != 0 {
 		log.Println(len(tp.allTransactions))
-		os.Exit(112)
+
 	}
 
 	return true

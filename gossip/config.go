@@ -30,7 +30,7 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"log"
 	"math/big"
-	"os"
+	"reflect"
 	"sync"
 	"time"
 	"zelonis/gossip/flow/appMsg"
@@ -87,7 +87,7 @@ func (m *Manager) UpdateGossipManager(domain *domain.Domain, gossipSeed []string
 }
 
 func (m *Manager) Start() error {
-	log.Println("Running Gossip Manager")
+
 	go m.startListner()
 	m.startFlow()
 
@@ -99,7 +99,7 @@ const (
 	defaultIpType     = "ip4"
 	defaultListenType = "tcp"
 	defaultKey        = "12D3KooWRpVRrcc2qDM9nv4rcy4Nynb6NW1rWwG7oTVrEX1PUMvb"
-	protocolID        = "/zel/0.0.2"
+	protocolID        = "/zel/0.0.3"
 )
 
 func (m *Manager) startListner() {
@@ -223,14 +223,16 @@ func (m *Manager) checkNodeStatus() {
 		log.Println("Trying to start validator node")
 		m.checkIfValidStake()
 
-		if m.NodeStatus.Synced && time.Since(m.NodeStatus.SyncedTime).Seconds() >= 10 && m.NodeStatus.LastHeight == 0 && (isValidatorOldRunning || isValidatorEnabled) && !isValidatorRunning {
+		if m.NodeStatus.Synced && time.Since(m.NodeStatus.SyncedTime).Seconds() >= 1000 && m.NodeStatus.LastHeight == 0 && (isValidatorOldRunning || isValidatorEnabled) && !isValidatorRunning {
 			//Start validator for gensis
 			//Check account balance
 
 			isValidatorRunning = true
 		} else if m.NodeStatus.Synced {
 			if isValidatorOldRunning {
+
 				m.validatorActive()
+
 			} else if isValidatorEnabled && !txadded {
 				//Add transaction to mempool
 				wallet := m.getWalletAddress()
@@ -255,7 +257,7 @@ func (m *Manager) checkNodeStatus() {
 		} else {
 			log.Println("Validator node is still running")
 			log.Println(m.NodeStatus)
-			os.Exit(223)
+
 		}
 		time.Sleep(3 * time.Second)
 	}
@@ -297,7 +299,7 @@ func (m *Manager) checkIfValidStake() {
 		if !status {
 			log.Println("Invalid account balance:", wallet)
 		}
-		if account.Stake != nil {
+		if !reflect.DeepEqual(account.Stake, []byte("0")) {
 			//Check active stake val
 			isValidatorOldRunning = true
 			isValidatorEnabled = true

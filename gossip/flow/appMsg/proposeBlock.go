@@ -40,19 +40,18 @@ func (self *ProposeBlock) Encode() ([]byte, error) {
 	return json.Marshal(self)
 }
 
-func (self *ProposeBlock) Process(f *flowControl) {
+func (self *ProposeBlock) Process(f *flowControl) (*Flow, bool) {
 	_, err := f.domain.VerifyInsertBlockAndTransaction(self.Block)
 	if err != nil {
 		log.Fatalf("VerifyInsertBlockAndTransaction err: %s", err)
 	}
-	appFlow := &Flow{
+	return &Flow{
 		Header:  SendInvBlockHash,
 		Payload: self.Block.Header.BlockHash,
-	}
-	msg, err := appFlow.Encode()
-	if err != nil {
-		panic(err)
-	}
-	f.sendMsg(msg)
+	}, true
+
+}
+
+func BroadCastMsg(msg []byte) {
 
 }

@@ -120,6 +120,7 @@ func (g *gossip) startGossip() error {
 
 	flow := flowv1.CreateFollow(g.zelPeer.encoder, g.zelPeer.decoder, g.zelPeer.conn, g.zelPeer.domain, g.zelPeer.validator, g.zelPeer.stake, g.zelPeer.NodeStatus)
 	flow.Start(1)
+
 	return nil
 }
 

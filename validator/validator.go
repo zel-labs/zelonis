@@ -81,7 +81,7 @@ func New(cfg *Config) (*Validator, error) {
 		cfg:           cfg,
 		stop:          make(chan struct{}),
 		startStopLock: sync.Mutex{},
-		domain:        domain.NewDomain(cfg.DataDir),
+		domain:        domain.NewDomain(cfg.DataDir, cfg.ReVerify),
 	}
 
 	if err := vn.openDataDir(); err != nil {
@@ -152,7 +152,7 @@ func (vn *Validator) Start() error {
 	defer vn.startStopLock.Unlock()
 	vn.verifyGenesis()
 
-	gossipManager := gossip.NewManager(zeldb.NewDb("gossips", vn.cfg.DataDir), vn.cfg.PrivateKey, vn.domain)
+	gossipManager := gossip.NewManager(zeldb.NewDb("gossips", vn.cfg.DataDir, false), vn.cfg.PrivateKey, vn.domain)
 	gossipManager.UpdateGossipManager(vn.domain, vn.cfg.GossipSeed, vn.cfg.GossipPort, vn.cfg.Validator, vn.cfg.Stake)
 	go gossipManager.Start()
 
@@ -174,8 +174,8 @@ func (vn *Validator) verifyGenesis() error {
 	if !status {
 		panic("genesis block could not be verified")
 	}
-	//Add gensis block to db
-	//Add gensis transactions to db
-	//Add gensis Account to db
+	if vn.cfg.ReVerify {
+		vn.domain.ReverifyTx()
+	}
 	return nil
 }

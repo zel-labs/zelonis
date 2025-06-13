@@ -40,6 +40,10 @@ func (self *InviTransaction) Encode() ([]byte, error) {
 }
 
 func (self *InviTransaction) Process(f *flowControl) {
+	txCheck := f.domain.TxManager().CheckIfTxExists(self.Transaction)
+	if txCheck {
+		return
+	}
 	status := f.domain.TxManager().Mempool().AddTxToMempool(self.Transaction)
 	if status {
 		f.encodeAndSend(self.Transaction, SendInviTransaction)

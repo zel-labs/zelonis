@@ -22,6 +22,7 @@ package appMsg
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"time"
 	"zelonis/external"
 )
@@ -46,6 +47,8 @@ func (self *InvBlockHash) Encode() ([]byte, error) {
 func (self *InvBlockHash) Process(f *flowControl) error {
 
 	if f.IsIDBRunning {
+		log.Println("IDB is running")
+
 		return nil
 	}
 
@@ -68,6 +71,7 @@ func (self *InvBlockHash) Process(f *flowControl) error {
 	requestBlockInfo := NewRequestBlockInfo()
 	requestBlockInfo.Hash = blockHash
 	payload, _ := requestBlockInfo.Encode()
+
 	//Request block
 	appFlow := &Flow{
 		Header:  RequestBlock,

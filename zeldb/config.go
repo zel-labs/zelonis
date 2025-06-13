@@ -23,11 +23,13 @@ import (
 	"fmt"
 	"github.com/dgraph-io/badger/v4"
 	"log"
+	"os"
 	"time"
 )
 
-func NewDb(olddir, datadir string) *ZelDB {
+func NewDb(olddir, datadir string, reverify bool) *ZelDB {
 	dir := fmt.Sprintf("%s/gzel/%s", datadir, olddir)
+
 	opts := badger.DefaultOptions(dir)
 
 	opts = opts.WithSyncWrites(true)           // safer but slower, set false if you want faster writes at risk of crash loss
@@ -48,6 +50,20 @@ func NewDb(olddir, datadir string) *ZelDB {
 	if err != nil {
 		log.Fatal(err)
 	}
+	zeldb := &ZelDB{
+		DB: db,
+	}
+	if reverify {
+		if olddir == "stats" {
+			zeldb.deleteKey(totalAccountsKey)
+			zeldb.deleteKey(totalTransactionsKey)
+			zeldb.deleteKey(totalSupply)
+			zeldb.deleteKey(totalStaked)
+
+		} else {
+			db.DropAll()
+		}
+	}
 	go func() {
 		for {
 			time.Sleep(10 * time.Second)
@@ -57,8 +73,23 @@ func NewDb(olddir, datadir string) *ZelDB {
 	}()
 
 	//os.Exit(12)
-	return &ZelDB{
-		DB: db,
-	}
+	return zeldb
 
 }
+
+func resetDB(dir string) {
+
+	err := os.RemoveAll(dir)
+	if err != nil {
+		log.Fatalf("Failed to delete BadgerDB: %v", err)
+	}
+}
+
+const (
+	heightestBlockHeightKey = "block_height"
+	totalAccountsKey        = "accounts_total"
+	totalTransactionsKey    = "transactions_total"
+	totalSupply             = "supply_total"
+	totalStaked             = "staked_total"
+	totalValidatorsKey      = "validators_total"
+)

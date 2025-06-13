@@ -21,7 +21,9 @@ package domain
 import (
 	"crypto/ed25519"
 	"encoding/json"
+	"fmt"
 	"golang.org/x/crypto/blake2b"
+	"log"
 	"time"
 	"zelonis/external"
 	"zelonis/stats"
@@ -39,12 +41,13 @@ type Domain struct {
 	statsManager *stats.Manager
 }
 
-func NewDomain(dir string) *Domain {
-	statsManager := stats.NewManager(zeldb.NewDb("stats", dir))
-	accountManger := accounts.NewManager(zeldb.NewDb("accounts", dir), statsManager)
-	blockManager := block.NewManager(zeldb.NewDb("blocks", dir), statsManager)
+func NewDomain(dir string, reverify bool) *Domain {
 
-	txManager := transaction.NewManager(zeldb.NewDb("tx", dir), accountManger, statsManager)
+	statsManager := stats.NewManager(zeldb.NewDb("stats", dir, reverify))
+	accountManger := accounts.NewManager(zeldb.NewDb("accounts", dir, reverify), statsManager)
+	blockManager := block.NewManager(zeldb.NewDb("blocks", dir, false), statsManager)
+
+	txManager := transaction.NewManager(zeldb.NewDb("tx", dir, reverify), accountManger, statsManager)
 
 	domain := &Domain{
 		accountManager: accountManger,
@@ -55,6 +58,22 @@ func NewDomain(dir string) *Domain {
 	}
 
 	return domain
+}
+
+func (d *Domain) ReverifyTx() error {
+	height, _ := d.statsManager.GetUtxoBlockHeight()
+	maxHeight, _ := d.statsManager.GetHighestBlockHeight()
+	for height < maxHeight {
+		height++
+		block, _ := d.blockManager.GetBlockById(fmt.Sprintf("%v", height))
+		err := d.txManager.VerifyTxs(block.Transactions, block.Header.BlockHeight)
+		if err != nil {
+			return err
+		}
+		log.Println(height)
+	}
+
+	return nil
 }
 
 func (d *Domain) VerifyInsertBlockAndTransaction(block *external.Block) (bool, error) {

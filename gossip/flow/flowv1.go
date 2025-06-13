@@ -28,6 +28,9 @@ import (
 	"zelonis/validator/domain"
 )
 
+var flowList = flows{}
+
+type flows []*flowv1
 type flowv1 struct {
 	isIncoming bool
 	isOutgoing bool
@@ -42,7 +45,7 @@ type flowv1 struct {
 }
 
 func CreateFollow(encoder *capnp.Encoder, decoder *capnp.Decoder, conn network.Conn, domain *domain.Domain, validator bool, stake float64, nodeStatus *external.NodeStatus) *flowv1 {
-	return &flowv1{
+	flow := &flowv1{
 		isIncoming: false,
 		isOutgoing: false,
 		decoder:    decoder,
@@ -53,6 +56,8 @@ func CreateFollow(encoder *capnp.Encoder, decoder *capnp.Decoder, conn network.C
 		stake:      stake,
 		NodeStatus: nodeStatus,
 	}
+	flowList = append(flowList, flow)
+	return flow
 }
 
 func (f *flowv1) Start(dir int) {
@@ -61,6 +66,12 @@ func (f *flowv1) Start(dir int) {
 
 	f.sendInvBlockHash(dir)
 
+}
+func (f *flowv1) BroadCastMsg(msg *appMsg.Flow) {
+
+	for _, flow := range flowList {
+		flow.send(msg)
+	}
 }
 
 func (f *flowv1) turnOnReciver() error {
@@ -73,9 +84,9 @@ func (f *flowv1) turnOnReciver() error {
 			return err
 		}
 
-		status := flowContoller.FilterPayload(appFlow)
+		msg, status := flowContoller.FilterPayload(appFlow)
 		if status {
-			continue
+			f.BroadCastMsg(msg)
 		}
 
 	}

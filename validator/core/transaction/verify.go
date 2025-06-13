@@ -24,8 +24,8 @@ import (
 	"fmt"
 	"github.com/mr-tron/base58"
 	"log"
+	"math/big"
 	"reflect"
-	"strings"
 	"zelonis/external"
 	"zelonis/utils/maths"
 )
@@ -38,7 +38,6 @@ var coreSender = []byte{
 	0x31, 0x31, 0x31, 0x31, 0x31, 0x31, 0x31, 0x31,
 	0x31, 0x31, 0x31, 0x31,
 }
-var genesisParentHash = strings.Repeat("0", 32)
 
 func (m *Manager) VerifyTxs(txs []*external.Transaction, blockHeight uint64) error {
 	for _, tx := range txs {
@@ -48,14 +47,12 @@ func (m *Manager) VerifyTxs(txs []*external.Transaction, blockHeight uint64) err
 			continue
 		}
 
-		err := m.verifyTx(tx, blockHeight)
-		if err != nil {
-			return err
-		}
+		m.verifyTx(tx, blockHeight)
 
 		//Remove tx from mempool
 		m.mempool.RemoveTxFromMempool(tx)
 		m.statsManager.UpdateTotalTransactions()
+		m.statsManager.UpdateUtxoBlockHeight(blockHeight)
 		if tx.Status == external.TxAccepted {
 			if tx.TxType == external.TxStakingSend {
 				m.statsManager.UpdateTotalStake(tx.Inpoint.Value)
@@ -99,6 +96,8 @@ func (m *Manager) addTxToAccount(tx *external.Transaction, blockHeight uint64) {
 
 	if tx.TxType == external.TxTransfer || (tx.TxType == 0 && blockHeight == 0) {
 		m.transferTx(tx, blockHeight)
+		log.Println(tx.Status)
+		//os.Exit(12)
 	} else if tx.TxType == external.TxStakingSend {
 		m.stakingTx(tx, blockHeight)
 	} else if tx.TxType == external.TxStakingRelease {
@@ -133,15 +132,16 @@ func (m *Manager) stakingTx(tx *external.Transaction, blockHeight uint64) {
 
 			//Reduce balance from sender
 			//Add Balance to reciver
-			_, status := sa.ReduceBalance(tx.Inpoint.Value, tx.Fee)
+			status := sa.TestReduceBalance(tx.Inpoint.Value, tx.Fee)
 
+			sa.AddStake(tx.Inpoint.Value)
+			m.accountManger.UpdateAccount(sa, tx.Inpoint.PubKey)
+			m.accountManger.AddTxToAccountHistory(tx.Inpoint.PubKey, tx.TxHash)
 			if !status {
 				tx.Status = external.TXRejectedDueToBalance
 				return
 			}
-			sa.AddStake(tx.Inpoint.Value)
-			m.accountManger.UpdateAccount(sa, tx.Inpoint.PubKey)
-			m.accountManger.AddTxToAccountHistory(tx.Inpoint.PubKey, tx.TxHash)
+			tx.Status = external.TxAccepted
 		}
 
 	}
@@ -170,7 +170,7 @@ func (m *Manager) transferTx(tx *external.Transaction, blockHeight uint64) {
 		if sa.AccountBalanceBigFloat().Cmp(senderVal) >= 0 {
 			//Reduce balance from sender
 			//Add Balance to reciver
-			_, status := sa.ReduceBalance(tx.Inpoint.Value, tx.Fee)
+			status := sa.TestReduceBalance(tx.Inpoint.Value, tx.Fee)
 			if !status {
 				tx.Status = external.TXRejectedDueToBalance
 				return
@@ -215,7 +215,7 @@ func (m *Manager) updateReciverAccount(tx *external.Transaction) bool {
 				Reward:              []byte("0"),
 			}
 		}
-		ra.AddBalance(tx.Inpoint.Value)
+		ra.TestAddBalance(Outpoint.Value)
 		m.accountManger.UpdateAccount(ra, Outpoint.PubKey)
 		m.accountManger.AddTxToAccountHistory(Outpoint.PubKey, tx.TxHash)
 	}
@@ -276,12 +276,19 @@ func (m *Manager) txValueSanity(tx *external.Transaction) bool {
 		log.Println("Inpoint total does not match outpoint total")
 		return false
 	}
+	cmp = inpointTotalB.Cmp(big.NewFloat(0))
+	if cmp <= 0 {
+		return false
+	}
 	return true
 }
 
 func (m *Manager) GetTransactionByHash(hash string) (*external.Transaction, error) {
 
 	hashBytes, err := external.NewDomainHashFromString(hash)
+	if err != nil {
+		return nil, err
+	}
 	status, err := m.db.Has(hashBytes.ByteSlice())
 	if err != nil {
 		return nil, err
@@ -292,6 +299,10 @@ func (m *Manager) GetTransactionByHash(hash string) (*external.Transaction, erro
 	tx := m.getTransaction(hashBytes.ByteSlice())
 	return tx, nil
 
+}
+
+func (m *Manager) CheckIfTxExists(tx *external.Transaction) bool {
+	return m.checkIfTxExists(tx)
 }
 
 func (m *Manager) GetTransactionBlockHeight(hash string) (string, error) {

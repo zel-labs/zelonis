@@ -22,6 +22,7 @@ package zeldb
 import (
 	"errors"
 	"github.com/dgraph-io/badger/v4"
+	"log"
 )
 
 type ZelDB struct {
@@ -29,6 +30,14 @@ type ZelDB struct {
 	*badger.DB
 }
 
+func (db *ZelDB) deleteKey(key string) {
+	err := db.Update(func(txn *badger.Txn) error {
+		return txn.Delete([]byte(key))
+	})
+	if err != nil {
+		log.Fatalf("Failed to delete key: %v", err)
+	}
+}
 func (db *ZelDB) Has(key []byte) (bool, error) {
 
 	err := db.View(func(txn *badger.Txn) error {

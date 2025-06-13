@@ -109,7 +109,7 @@ func (m *Manager) rewardTxFee() []byte {
 	return []byte("0.00000")
 }
 func (m *Manager) transaferTxFee() []byte {
-	return []byte("0.0000001")
+	return []byte("0.000001")
 }
 func (m *Manager) stakingTxFee() []byte {
 	return []byte("0.000005")

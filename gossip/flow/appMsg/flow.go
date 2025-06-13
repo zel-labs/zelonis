@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"github.com/libp2p/go-libp2p/core/network"
 	"log"
+	"sync"
 	ping "zelonis/capn"
 	"zelonis/external"
 	"zelonis/validator/domain"
@@ -40,6 +41,7 @@ type flowControl struct {
 	validator bool
 	stake     float64
 	*external.NodeStatus
+	sync *sync.Mutex
 }
 
 func NewFlowControl(conn network.Conn, encoder *capnp.Encoder, decorder *capnp.Decoder, domain *domain.Domain, validator bool, stake float64, nodeStatus *external.NodeStatus) *flowControl {
@@ -51,6 +53,7 @@ func NewFlowControl(conn network.Conn, encoder *capnp.Encoder, decorder *capnp.D
 		validator:  validator,
 		stake:      stake,
 		NodeStatus: nodeStatus,
+		sync:       &sync.Mutex{},
 	}
 }
 
@@ -66,7 +69,7 @@ func (f *Flow) Decode(b []byte) error {
 	return json.Unmarshal(b, f)
 }
 
-func (f *flowControl) FilterPayload(flow *Flow) bool {
+func (f *flowControl) FilterPayload(flow *Flow) (*Flow, bool) {
 
 	switch flow.Header {
 	case SendInvBlockHash:
@@ -84,7 +87,8 @@ func (f *flowControl) FilterPayload(flow *Flow) bool {
 	case SendProposeBlock:
 		payload := NewProposeBlock()
 		payload.Decode(flow.Payload)
-		payload.Process(f)
+		return payload.Process(f)
+
 	case SendInviTransaction:
 		payload := NewInviTransaction()
 		payload.Decode(flow.Payload)
@@ -94,7 +98,7 @@ func (f *flowControl) FilterPayload(flow *Flow) bool {
 		payload.Decode(flow.Payload)
 		payload.Process(f)
 	}
-	return true
+	return nil, false
 }
 
 func (f *flowControl) encodeAndSend(msg interface{}, header int) error {

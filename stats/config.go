@@ -23,6 +23,7 @@ import (
 	"math"
 	"math/big"
 	"strconv"
+	"time"
 	"zelonis/external"
 	"zelonis/zeldb"
 )
@@ -78,6 +79,30 @@ func (m *Manager) UpdateTotalTransactions() error {
 	info := fmt.Sprintf("%v", txCount+1)
 	infoBytes := []byte(info)
 	err := m.db.Set([]byte(totalTransactionsKey), infoBytes)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *Manager) GetUtxoBlockHeight() (uint64, error) {
+	byteInfo, err := m.db.Get([]byte(utxoBlockHeight))
+	if err != nil {
+		return 0, err
+	}
+	info := fmt.Sprintf("%s", byteInfo)
+	infoHeight, err := strconv.ParseUint(info, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	return infoHeight, nil
+}
+
+func (m *Manager) UpdateUtxoBlockHeight(height uint64) error {
+
+	info := fmt.Sprintf("%v", height)
+	infoBytes := []byte(info)
+	err := m.db.Set([]byte(utxoBlockHeight), infoBytes)
 	if err != nil {
 		return err
 	}
@@ -149,11 +174,13 @@ func (m *Manager) GetEpoch() *external.Epoch {
 		epoch.EpochStart = 0
 		epoch.EpochEnd = 259200
 	} else {
-		epochSize := uint64(math.Ceil(float64(ch) / (259200 * 3)))
+		epochSize := uint64(math.Ceil(float64(ch-259200) / (259200 * 3)))
 		epoch.EpochNumber = epochSize + 1
 		epoch.EpochStart = 259200*3*epochSize - (259200 * 2)
 		epoch.EpochEnd = 259200*3 + epoch.EpochStart
 		epoch.EpochStart = epoch.EpochStart + 1
+
 	}
+	epoch.TimeRemaining = int64(epoch.EpochEnd-ch)*330 + time.Now().UnixMilli()
 	return epoch
 }

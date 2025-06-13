@@ -91,6 +91,9 @@ func (self *ResponseBlockInfo) Encode() ([]byte, error) {
 }
 
 func (self *ResponseBlockInfo) Process(f *flowControl) {
+	if f.IsIDBRunning {
+		return
+	}
 	heighestHash, err := f.domain.GetHighestBlockHash()
 	if err != nil {
 		return
@@ -101,8 +104,9 @@ func (self *ResponseBlockInfo) Process(f *flowControl) {
 	}
 
 	//Compare difference in recived block and current block
-	if self.Block.Header.BlockHeight-cBlock.Header.BlockHeight > 1 {
+	if self.Block.Header.BlockHeight-cBlock.Header.BlockHeight > 1 && self.Block.Header.BlockHeight > cBlock.Header.BlockHeight {
 		//Turn on IDB Sync
+		log.Println("block height is ", self.Block.Header.BlockHeight, cBlock.Header.BlockHeight)
 
 		f.IsIDBRunning = true
 		status, err := self.StartIDB(cBlock, f)
@@ -110,7 +114,7 @@ func (self *ResponseBlockInfo) Process(f *flowControl) {
 			panic(err)
 		}
 		if status {
-			log.Println("IDB running")
+			log.Println("IDB Completed successfully")
 
 		}
 	} else {
