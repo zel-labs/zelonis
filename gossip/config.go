@@ -240,7 +240,7 @@ func (m *Manager) checkNodeStatus() {
 				tx := m.domain.TxManager().BuildTxFromType(wallet, wallet, stakeAmount, m.LastBlockHash, external.TxStakingSend)
 				sig := m.domain.TxManager().SignTxAndVerify(tx, m.privKey())
 				tx.Signature = sig
-				log.Printf("%x", tx.TxHash)
+
 				m.domain.TxManager().Mempool().AddTxToMempool(tx)
 				//Share tx hash to all the users
 

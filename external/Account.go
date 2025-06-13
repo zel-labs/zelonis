@@ -20,7 +20,6 @@ package external
 
 import (
 	"encoding/json"
-	"log"
 	"math/big"
 	"zelonis/utils/maths"
 )
@@ -60,7 +59,6 @@ func (ac *Account) AccountRewardBigFloat() *big.Float {
 func (ac *Account) ReduceBalance(val []byte, fee []byte) (*big.Float, bool) {
 	valBig, _ := maths.BytesToBigFloatString(val)
 	feeBig, _ := maths.BytesToBigFloatString(fee)
-	log.Println(feeBig)
 
 	totalValue := new(big.Float).Add(valBig, feeBig)
 	accountVal := ac.AccountBalanceBigFloat()
@@ -78,7 +76,6 @@ func (ac *Account) TestReduceBalance(val []byte, fee []byte) bool {
 	totalVal := new(big.Int).Add(valBig, feeBig)
 	accountVal, _ := maths.ByteTomZel(ac.Balance)
 	accountVal = accountVal.Sub(accountVal, totalVal)
-	log.Println(ac.Balance)
 
 	if accountVal.Cmp(big.NewInt(0)) == -1 {
 		return false
