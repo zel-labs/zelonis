@@ -44,6 +44,7 @@ type zelPeer struct {
 	domain    *domain.Domain
 	validator bool
 	stake     float64
+	active    bool
 	*external.NodeStatus
 }
 

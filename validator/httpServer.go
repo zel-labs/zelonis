@@ -60,11 +60,11 @@ type RpcServer struct {
 	gossipManager *gossip.Manager
 }
 
-func NewHTTPServer(timeouts time.Duration, domain *domain.Domain) *RpcServer {
+func NewHTTPServer(timeouts time.Duration, domain *domain.Domain, port int) *RpcServer {
 	return &RpcServer{
 		timeouts:     timeouts,
 		handlerNames: make(map[string]string),
-		port:         DefaultHTTPPort,
+		port:         port,
 		host:         DefaultHTTPHost,
 		domain:       domain,
 	}

@@ -95,6 +95,10 @@ func defaultNodeConfig(ctx *cli.Context) validator.Config {
 	if reverify {
 		cfg.ReVerify = true
 	}
+	rpcPort := ctx.Int("rpc-port")
+	if rpcPort != 8545 {
+		cfg.HTTPPort = rpcPort
+	}
 	cfg.PrivateKey = base64.StdEncoding.EncodeToString(encoded)
 	cfg.Name = clientIdentifier
 	cfg.Version = params.VersionWithCommit(git.Commit, git.Date)
@@ -125,6 +129,11 @@ func init() {
 			Name:  "utxo-reverify",
 			Usage: "Use utxo reverse validator",
 			Value: false,
+		},
+		&cli.IntFlag{
+			Name:  "rpc-port",
+			Usage: "RPC port",
+			Value: 8545,
 		},
 	}
 

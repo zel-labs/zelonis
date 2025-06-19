@@ -87,7 +87,8 @@ func New(cfg *Config) (*Validator, error) {
 	if err := vn.openDataDir(); err != nil {
 		return nil, err
 	}
-	vn.rpc = NewHTTPServer(5*time.Second, vn.domain)
+
+	vn.rpc = NewHTTPServer(5*time.Second, vn.domain, cfg.HTTPPort)
 
 	return vn, nil
 }

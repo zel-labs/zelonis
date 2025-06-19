@@ -111,7 +111,11 @@ func (self *ResponseBlockInfo) Process(f *flowControl) {
 		f.IsIDBRunning = true
 		status, err := self.StartIDB(cBlock, f)
 		if err != nil {
-			panic(err)
+
+			f.conn.Close()
+			f.IsIDBRunning = false
+			log.Println(err)
+			return
 		}
 		if status {
 			log.Println("IDB Completed successfully")

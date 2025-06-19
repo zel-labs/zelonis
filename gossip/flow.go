@@ -60,13 +60,17 @@ func (m *Manager) startFlow() {
 		}
 
 		for _, gossipM := range m.gossipManager {
-			if gossipM.active {
 
+			if gossipM.active {
+				log.Println("Gossip already active")
+				log.Println(gossipM.zelPeer.conn.ConnState())
+				//peers = append(peers, gossipM)
 				continue
 			}
 
-			gossipM.startGossip()
+			go gossipM.startGossip()
 		}
+
 		log.Println("Gossip Manager is active ", len(m.gossipManager))
 		time.Sleep(10 * time.Second)
 	}
