@@ -50,9 +50,10 @@ type Manager struct {
 	gossipLister  *gossipLister
 	privateKey    string
 	gossipManager gossipFlowManager
-	addr          string
-	validator     bool
-	stake         float64
+
+	addr      string
+	validator bool
+	stake     float64
 	*external.NodeStatus
 }
 type gossipLister struct {
