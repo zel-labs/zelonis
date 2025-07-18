@@ -67,8 +67,19 @@ func (m *Manager) startFlow() {
 				//peers = append(peers, gossipM)
 				continue
 			}
-
-			go gossipM.startGossip()
+			if gossipM.zelPeer.conn.IsClosed() {
+				log.Println("Gossip closed")
+				gossipM.active = false
+				continue
+			}
+			go func() {
+				err := gossipM.startGossip()
+				if err != nil {
+					log.Println(err)
+					gossipM.active = false
+					//delete(m.gossipManager, key)
+				}
+			}()
 		}
 
 		log.Println("Gossip Manager is active ", len(m.gossipManager))
@@ -123,7 +134,10 @@ func (g *gossip) startGossip() error {
 	}
 
 	flow := flowv1.CreateFollow(g.zelPeer.encoder, g.zelPeer.decoder, g.zelPeer.conn, g.zelPeer.domain, g.zelPeer.validator, g.zelPeer.stake, g.zelPeer.NodeStatus)
-	flow.Start(1)
+	err = flow.Start(1)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

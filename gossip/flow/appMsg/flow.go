@@ -83,7 +83,10 @@ func (f *flowControl) FilterPayload(flow *Flow) (*Flow, bool) {
 	case ResponseBlock:
 		payload := NewResponseBlockInfo()
 		payload.Decode(flow.Payload)
-		payload.Process(f)
+		status := payload.Process(f)
+		if status {
+			return flow, true
+		}
 	case SendProposeBlock:
 		payload := NewProposeBlock()
 		payload.Decode(flow.Payload)

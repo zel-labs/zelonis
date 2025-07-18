@@ -24,9 +24,11 @@ import (
 	"fmt"
 	"golang.org/x/crypto/blake2b"
 	"log"
+	"sort"
 	"time"
 	"zelonis/external"
 	"zelonis/stats"
+	"zelonis/utils/maths"
 	"zelonis/validator/core/accounts"
 	"zelonis/validator/core/block"
 	"zelonis/validator/core/transaction"
@@ -109,6 +111,21 @@ func (d *Domain) checkTXHash(block *external.Block) *external.Block {
 	return block
 }
 
+func (d *Domain) GetRichlist() []*external.Account {
+	list, _ := d.accountManager.GetRichList()
+
+	// Sort by value
+	sort.Slice(list, func(i, j int) bool {
+		v1, _ := maths.ByteTomZel(list[i].Balance)
+		v2, _ := maths.ByteTomZel(list[j].Balance)
+		if v1.Cmp(v2) >= 0 {
+			return true
+		}
+		return false // or > for descending
+	})
+
+	return list
+}
 func (d *Domain) GetAccountBalance(account []byte) (*external.Account, bool) {
 	accountInfo, status := d.accountManager.GetAccount(account)
 	if !status {

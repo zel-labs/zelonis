@@ -26,6 +26,7 @@ import (
 )
 
 type jsonAccountInfo struct {
+	Address             string `json:"address"`
 	Balance             string `json:"balance"`
 	Stake               string `json:"stake"`
 	Reward              string `json:"reward"`
@@ -35,6 +36,27 @@ type jsonAccountInfo struct {
 	PendingDeactivation string `json:"pending_deactivation"`
 	WarmupStake         string `json:"warmup_stake"`
 	CoolingDownStake    string `json:"cooling_down_stake"`
+}
+
+func (s *RpcServer) getRichlist(c *fiber.Ctx) error {
+	list := s.domain.GetRichlist()
+	jsonAccounts := make([]jsonAccountInfo, 0)
+	for _, accountInfo := range list {
+		jsonAccount := jsonAccountInfo{
+			Address:             (accountInfo.Address),
+			Balance:             s.valToJsonVal(accountInfo.Balance),
+			Stake:               s.valToJsonVal(accountInfo.Stake),
+			Reward:              s.valToJsonVal(accountInfo.Reward),
+			ActivatingStake:     s.valToJsonVal(accountInfo.ActivatingStake),
+			DeactivatingStake:   s.valToJsonVal(accountInfo.DeactivatingStake),
+			PendingActivation:   s.valToJsonVal(accountInfo.PendingActivation),
+			PendingDeactivation: s.valToJsonVal(accountInfo.PendingDeactivation),
+			WarmupStake:         s.valToJsonVal(accountInfo.WarmupStake),
+			CoolingDownStake:    s.valToJsonVal(accountInfo.CoolingDownStake),
+		}
+		jsonAccounts = append(jsonAccounts, jsonAccount)
+	}
+	return c.JSON(jsonAccounts)
 }
 
 func (s *RpcServer) getAccountBalance(c *fiber.Ctx) error {

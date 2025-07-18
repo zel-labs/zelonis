@@ -34,6 +34,7 @@ type Account struct {
 	WarmupStake         []byte `json:"warmup_stake"`
 	CoolingDownStake    []byte `json:"cooling_down_stake"`
 	Reward              []byte `json:"reward"`
+	Address             string `json:"address"`
 }
 
 func (ac *Account) SerializedToValidatorAccount(infoBytes []byte) error {

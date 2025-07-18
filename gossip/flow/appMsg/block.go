@@ -90,17 +90,17 @@ func (self *ResponseBlockInfo) Encode() ([]byte, error) {
 	return json.Marshal(self)
 }
 
-func (self *ResponseBlockInfo) Process(f *flowControl) {
+func (self *ResponseBlockInfo) Process(f *flowControl) bool {
 	if f.IsIDBRunning {
-		return
+		return false
 	}
 	heighestHash, err := f.domain.GetHighestBlockHash()
 	if err != nil {
-		return
+		return false
 	}
 	cBlock, err := f.domain.GetBlockByHash(heighestHash)
 	if err != nil {
-		return
+		return false
 	}
 
 	//Compare difference in recived block and current block
@@ -113,9 +113,10 @@ func (self *ResponseBlockInfo) Process(f *flowControl) {
 		if err != nil {
 
 			f.conn.Close()
+			log.Println("error starting IDB")
 			f.IsIDBRunning = false
-			log.Println(err)
-			return
+
+			return true
 		}
 		if status {
 			log.Println("IDB Completed successfully")
@@ -125,5 +126,5 @@ func (self *ResponseBlockInfo) Process(f *flowControl) {
 		f.domain.VerifyInsertBlockAndTransaction(&self.Block)
 		f.Synced = true
 	}
-
+	return false
 }

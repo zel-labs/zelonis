@@ -83,7 +83,7 @@ func (s *RpcServer) Start(flowManager *gossip.Manager) {
 	app.Get("/recoverWallet/:seed/keys/:keys", s.recoverWallet)
 	app.Post("/sendTx/", s.sendTx)
 	app.Get("/", func(c *fiber.Ctx) error {
-		return c.Send([]byte("Hello, Fiber!"))
+		return c.Send([]byte("Hello, Welcome to Zelonis Blockchain RPC Server!"))
 	})
 	s.webserver(app)
 	err := app.Listen(":" + strconv.Itoa(s.port))
@@ -104,6 +104,7 @@ func (s *RpcServer) webserver(app *fiber.App) {
 	app.Get("/accountTxList/:account", s.getAccountTxList)
 	app.Get("/accountTxLimit/:account/:from/:limit", s.getAccountTxWithLimit)
 	app.Get("/currentStatus/", s.getCurrentStatus)
+	app.Get("/accounts/", s.getRichlist)
 
 }
 
@@ -277,9 +278,11 @@ func (s *RpcServer) createWallet(c *fiber.Ctx) error {
 }
 
 func (s *RpcServer) sendTx(c *fiber.Ctx) error {
+
 	seed := c.FormValue("seed")
 	keys := c.FormValue("keys")
 	receiverVal := c.FormValue("receiver")
+
 	if len(receiverVal) < 43 || len(receiverVal) > 44 {
 		return c.SendStatus(fiber.StatusBadRequest)
 	}

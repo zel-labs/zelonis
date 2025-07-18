@@ -31,15 +31,19 @@ import (
 )
 
 type walletInfo struct {
-	Mnemonic   string             `json:"mnemonic"`
-	PrivateKey ed25519.PrivateKey `json:"privateKey"`
-	Address    string             `json:"address"`
-	EncryptKey int64              `json:"encryptKey"`
+	Mnemonic      string             `json:"mnemonic"`
+	PrivateKey    ed25519.PrivateKey `json:"privateKey"`
+	Address       string             `json:"address"`
+	EncryptKey    int64              `json:"encryptKey"`
+	EncryptKeyStr string             `json:"encryptKeyStr"`
 }
 
 func CreateWallet() walletInfo {
 	encryptKey := time.Now().UnixNano()
-	return createAndRecoverWallet(encryptKey, false, "")
+	wallet := createAndRecoverWallet(encryptKey, false, "")
+	wallet.EncryptKeyStr = fmt.Sprintf("%v", encryptKey)
+	return wallet
+
 }
 
 func RecoverWallet(encryptKeyStr string, oldMnemonic string) walletInfo {

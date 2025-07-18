@@ -21,6 +21,7 @@ package accounts
 
 import (
 	"fmt"
+	"github.com/dgraph-io/badger/v4"
 	"log"
 	"strconv"
 	"time"
@@ -38,6 +39,49 @@ func (m *Manager) AddAccountTransaction(account []byte, txHash []byte) (bool, er
 	}
 
 	return true, nil
+}
+
+func (m *Manager) GetRichList() ([]*external.Account, error) {
+	opts := badger.DefaultIteratorOptions
+	opts.PrefetchValues = true // or false if you only need keys
+	wallets := []*external.Account{}
+	err := m.db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchValues = true // or false if you only need keys
+
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+
+			if len(string(item.Key())) > 44 {
+				continue
+			}
+			// Get value
+			err := item.Value(func(v []byte) error {
+
+				userAccount := &external.Account{}
+				err := userAccount.SerializedToValidatorAccount(v)
+				userAccount.Address = string(item.Key())
+				if err != nil {
+					return err
+				}
+				wallets = append(wallets, userAccount)
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+			log.Println(string(item.Key()))
+
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return wallets, nil
 }
 
 func (m *Manager) GetAccount(account []byte) (*external.Account, bool) {

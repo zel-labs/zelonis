@@ -19,6 +19,7 @@ along with Zelonis. If not, see <https://www.gnu.org/licenses/>.
 package flow
 
 import (
+	"log"
 	"zelonis/gossip/flow/appMsg"
 )
 
@@ -35,6 +36,11 @@ func (f *flowv1) sendInvBlockHash(dir int) error {
 		Payload: blockHash,
 	}
 	f.send(appFlow)
-	f.turnOnReciver()
+	err = f.turnOnReciver()
+	if err != nil && f.conn.IsClosed() {
+
+		log.Println("Connection is closed.")
+		return err
+	}
 	return nil
 }

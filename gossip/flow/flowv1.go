@@ -20,6 +20,7 @@ package flow
 
 import (
 	"capnproto.org/go/capnp/v3"
+	"fmt"
 	"github.com/libp2p/go-libp2p/core/network"
 	"log"
 	ping "zelonis/capn"
@@ -60,12 +61,16 @@ func CreateFollow(encoder *capnp.Encoder, decoder *capnp.Decoder, conn network.C
 	return flow
 }
 
-func (f *flowv1) Start(dir int) {
+func (f *flowv1) Start(dir int) error {
 	//create a ping background
 	//Send Inv block
 
-	f.sendInvBlockHash(dir)
-
+	err := f.sendInvBlockHash(dir)
+	if err != nil && f.conn.IsClosed() {
+		log.Println("Connection is closed")
+		return err
+	}
+	return nil
 }
 func (f *flowv1) BroadCastMsg(msg *appMsg.Flow) {
 
@@ -85,6 +90,12 @@ func (f *flowv1) turnOnReciver() error {
 		}
 
 		msg, status := flowContoller.FilterPayload(appFlow)
+
+		if f.conn.IsClosed() {
+
+			return fmt.Errorf("Connection is closed")
+		}
+
 		if status {
 			f.BroadCastMsg(msg)
 		}

@@ -71,7 +71,11 @@ func (f *flowControl) reciveIDBBlocks() error {
 		switch flow.Header {
 		case ResponseBlockRelay:
 			payload := NewResponseBlockRelayInfo()
-			payload.Decode(flow.Payload)
+			err := payload.Decode(flow.Payload)
+			if err != nil {
+
+				return err
+			}
 			payload.Process(f)
 			return nil
 

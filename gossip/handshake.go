@@ -56,7 +56,7 @@ func (z *zelPeer) ErrorHandler(err error) {
 	log.Println(err)
 
 }
-func (g *gossipLister) handShake(s network.Stream) {
+func (g *gossipLister) handShake(s network.Stream) error {
 	z := &zelPeer{
 		conn:       s.Conn(),
 		encoder:    capnp.NewEncoder(s),
@@ -74,9 +74,12 @@ func (g *gossipLister) handShake(s network.Stream) {
 	}
 
 	flow := flowv1.CreateFollow(z.encoder, z.decoder, z.conn, z.domain, z.validator, z.stake, g.NodeStatus)
-	flow.Start(0)
+	err := flow.Start(0)
+	if err != nil {
+		return err
+	}
 	//if valid add p2phandler relay
-
+	return nil
 }
 
 func (z *zelPeer) requestHandShake() error {
